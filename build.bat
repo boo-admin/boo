@@ -76,12 +76,33 @@ swag init  --generalInfo doc.go --output .\services\docs
 
 @if not defined is_test goto test_ok
 go test .
+@if %ERRORLEVEL% NEQ 0 (
+	@echo ############
+	@echo test fail...
+	goto :eof
+)
 go test -v ./services/users
+@if %ERRORLEVEL% NEQ 0 (
+	@echo ############
+	@echo test fail...
+	goto :eof
+)
+@echo test ok
 :test_ok
 
 
 @if not defined is_compile goto compile_ok
+@pushd .\cmd\boo
+go build
+@if %ERRORLEVEL% NEQ 0 (
+	popd
 
+	@echo #############
+	@echo build fail...
+	goto :eof
+)
+@popd
+@echo build ok
 :compile_ok
 
 
