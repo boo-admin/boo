@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS boo_users (
   created_at                  timestamp WITH TIME ZONE,
   updated_at                  timestamp WITH TIME ZONE
 );
+-- +goose StatementEnd
 
+-- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS boo_user_profiles (
     id          bigserial PRIMARY KEY,
     user_id     bigint REFERENCES boo_users ON DELETE CASCADE,
@@ -28,7 +30,5 @@ CREATE TABLE IF NOT EXISTS boo_user_profiles (
 -- +goose StatementEnd
 
 -- +goose Down
--- +goose StatementBegin
 DROP TABLE IF EXISTS boo_user_profiles;
 DROP TABLE IF EXISTS boo_users;
--- +goose StatementEnd

@@ -12,6 +12,4 @@ CREATE TABLE IF NOT EXISTS boo_departments (
 -- +goose StatementEnd
 
 -- +goose Down
--- +goose StatementBegin
 DROP TABLE IF EXISTS boo_departments;
--- +goose StatementEnd
