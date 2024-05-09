@@ -76,7 +76,7 @@ swag init  --generalInfo doc.go --output .\services\docs
 
 @if not defined is_test goto test_ok
 go test .
-go test ./services/users
+go test -v ./services/users
 :test_ok
 
 

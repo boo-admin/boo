@@ -60,8 +60,9 @@ func (app *TestApp) Start(t testing.TB) {
 		t.FailNow()
 	}
 	app.Server = srv
+	echosrv.Use(echosrv.TestAuth())
 
-	closer, err := echosrv.Start(srv)
+	closer, err := echosrv.Start(srv, "/boo/api/v1")
 	if err != nil {
 		t.Error(err)
 		t.FailNow()

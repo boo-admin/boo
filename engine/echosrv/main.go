@@ -17,15 +17,15 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger" // echo-swagger middleware
-	_ "github.com/swaggo/files"                  // swagger embed files
+	_ "github.com/swaggo/files/v2"                  // swagger embed files
 )
 
-func Start(srv *boo.Server) (io.Closer, error) {
+func Start(srv *boo.Server, prefix, listenAddress string) (io.Closer, error) {
 	errC := make(chan error, 1)
 
 	var closer boo.SyncCloser
 	go func() {
-		err := run(srv, &closer)
+		err := run(srv, prefix, listenAddress, &closer)
 		if err != nil {
 			errC <- err
 		}
@@ -40,19 +40,18 @@ func Start(srv *boo.Server) (io.Closer, error) {
 	}
 }
 
-func Run(srv *boo.Server) error {
+func Run(srv *boo.Server, prefixPath, listenAddress string) error {
 	var closer boo.SyncCloser
-	return run(srv, &closer)
+	return run(srv, prefixPath, listenAddress, &closer)
 }
 
-func run(srv *boo.Server, closer *boo.SyncCloser) error {
-	// Echo instance
-	e := echo.New()
+var middlewares []echo.MiddlewareFunc
+func Use(middleware ...echo.MiddlewareFunc) {
+	middlewares = append(middlewares, middleware...)
+}
 
-	// Middleware
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-	e.Use(middleware.BasicAuthWithConfig(middleware.BasicAuthConfig{
+func TestAuth() echo.MiddlewareFunc {
+	return middleware.BasicAuthWithConfig(middleware.BasicAuthConfig{
 		Validator: middleware.BasicAuthValidator(func(username string, password string, ctx echo.Context) (bool, error) {
 			if username == "admin" && password == "admin" {
 				c := echofunctions.GetContext(ctx)
@@ -66,11 +65,23 @@ func run(srv *boo.Server, closer *boo.SyncCloser) error {
 			}
 			return false, nil
 		}),
-	}))
+	})
+}
+
+func run(srv *boo.Server, prefix, listenAddress string, closer *boo.SyncCloser) error {
+	// Echo instance
+	e := echo.New()
+
+	// Middleware
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	for _, m := range middlewares {
+		e.Use(m)
+	}
 
 	// Routes
-	mux := e.Group("/boo/api/v1")
-	EnalbeSwaggerAt(e, "/boo/swagger", docs.SwaggerInfo.InstanceName())
+	mux := e.Group(prefix)
+	EnalbeSwaggerAt(mux, "/swagger", docs.SwaggerInfo.InstanceName())
 	client.InitOperationQueryer(mux, srv.OperationQueryer)
 	client.InitDepartments(mux, srv.Departments)
 	client.InitUsers(mux, srv.Users)
@@ -83,14 +94,14 @@ func run(srv *boo.Server, closer *boo.SyncCloser) error {
 	}))
 	defer closer.Set(nil)
 
-	err := e.Start(":1323")
+	err := e.Start(listenAddress)
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
 	return nil
 }
 
-func EnalbeSwaggerAt(e *echo.Echo, prefix, instanceName string) {
+func EnalbeSwaggerAt(e *echo.Group, prefix, instanceName string) {
 	if !strings.HasPrefix(prefix, "/") {
 		prefix = "/" + prefix
 	}
