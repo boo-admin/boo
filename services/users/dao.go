@@ -10,6 +10,7 @@ import (
 	gobatis "github.com/runner-mei/GoBatis"
 )
 
+// @gobatis.namespace boo
 type DepartmentDao interface {
 	// @type select
 	// @postgres SELECT true FROM <tablename type="Department" /> WHERE lower(name) = lower(#{name})  LIMIT 1
@@ -25,6 +26,7 @@ type DepartmentDao interface {
 	List(ctx context.Context) ([]Department, error)
 }
 
+// @gobatis.namespace boo
 type UserDao interface {
 	// @type select
 	// @postgres SELECT true FROM <tablename type="User" /> WHERE lower(name) = lower(#{name})  LIMIT 1
@@ -61,6 +63,7 @@ type UserDao interface {
 	FindByIDList(ctx context.Context, id []int64) ([]User, error)
 }
 
+// @gobatis.namespace boo
 type EmployeeDao interface {
 	// @type select
 	// @postgres SELECT true FROM <tablename type="Employee" /> WHERE lower(name) = lower(#{name})  LIMIT 1
@@ -113,6 +116,7 @@ func init() {
 	})
 }
 
+// @gobatis.namespace boo
 type OperationLogDao interface {
 	WithDB(gobatis.DBRunner) OperationLogDao
 	Insert(ctx context.Context, ol *OperationLog) error
