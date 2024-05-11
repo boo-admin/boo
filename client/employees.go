@@ -11,7 +11,7 @@ import (
 )
 
 type Employee struct {
-	TableName    struct{}               `json:"-" xorm:"boo_users"`
+	TableName    struct{}               `json:"-" xorm:"boo_employees"`
 	ID           int64                  `json:"id" xorm:"id pk autoincr"`
 	DepartmentID int64                  `json:"department_id,omitempty" xorm:"department_id null"`
 	Name         string                 `json:"name" xorm:"name unique notnull"`

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/exp/slog"
 	"github.com/boo-admin/boo/errors"
 	"github.com/go-playground/locales/en"
 	"github.com/go-playground/locales/zh"
@@ -45,8 +46,14 @@ func init() {
 	Zh, _ = UtZh.GetTranslator("zh")
 	En, _ = UtZh.GetTranslator("en")
 
-	zhtran.RegisterDefaultTranslations(DefaultStructValidator, Zh)
-	entran.RegisterDefaultTranslations(DefaultStructValidator, En)
+	err := zhtran.RegisterDefaultTranslations(DefaultStructValidator, Zh)
+	if err != nil {
+		slog.Error("初始化 zh 本地化校验失败", slog.Any("error", err))
+	}
+	err = entran.RegisterDefaultTranslations(DefaultStructValidator, En)
+	if err != nil {
+		slog.Error("初始化 en 本地化校验失败", slog.Any("error", err))
+	}
 }
 
 type ValidatableError interface {
@@ -205,7 +212,7 @@ func (v *Validation) ErrorMap() map[string]ValidationError {
 }
 
 func (v *Validation) ToError() error {
-	if len(v.Errors) > 0 {
+	if len(v.Errors) == 0 {
 		panic(errors.New("validation errors empty"))
 	}
 	return ValidationErrors(v.Errors)

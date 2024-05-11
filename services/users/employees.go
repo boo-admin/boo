@@ -146,45 +146,47 @@ func (svc employeeService) update(ctx context.Context, currentUser authn.AuthUse
 				v.Error("name", "无法新建员工 '"+employee.Name+"'，该员工呢称 '"+employee.Nickname+"' 已存在")
 			}
 		}
-		newUser := *old
-		newUser.DepartmentID = employee.DepartmentID
-		newUser.Nickname = employee.Nickname
-		newUser.Description = employee.Description
-		newUser.Disabled = employee.Disabled
+		newEmployee := *old
+		newEmployee.DepartmentID = employee.DepartmentID
+		if employee.Nickname != "" {
+			newEmployee.Nickname = employee.Nickname
+		}
+		newEmployee.Description = employee.Description
+		newEmployee.Disabled = employee.Disabled
 
 		if len(employee.Fields) > 0 {
-			if newUser.Fields == nil {
-				newUser.Fields = employee.Fields
+			if newEmployee.Fields == nil {
+				newEmployee.Fields = employee.Fields
 			} else {
-				newUser.Fields = map[string]interface{}{}
+				newEmployee.Fields = map[string]interface{}{}
 				for key, value := range old.Fields {
-					newUser.Fields[key] = value
+					newEmployee.Fields[key] = value
 				}
 				for key, value := range employee.Fields {
-					newValue, exist := newUser.Fields[key]
+					newValue, exist := newEmployee.Fields[key]
 					if exist {
 						if newValue == nil {
-							delete(newUser.Fields, key)
+							delete(newEmployee.Fields, key)
 						} else {
-							newUser.Fields[key] = value
+							newEmployee.Fields[key] = value
 						}
 					} else {
-						newUser.Fields[key] = value
+						newEmployee.Fields[key] = value
 					}
 				}
 			}
 		}
 
-		if svc.ValidateEmployee(v, &newUser) {
+		if svc.ValidateEmployee(v, &newEmployee) {
 			return v.ToError()
 		}
 
-		err := svc.employeeDao.UpdateByID(ctx, id, &newUser)
+		err := svc.employeeDao.UpdateByID(ctx, id, &newEmployee)
 		if err != nil {
 			return err
 		}
 
-		svc.logUpdate(ctx, tx, currentUser, id, &newUser, old, importEmployee)
+		svc.logUpdate(ctx, tx, currentUser, id, &newEmployee, old, importEmployee)
 		return nil
 	})
 }
@@ -420,7 +422,8 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 			}))
 
 		for _, f := range svc.fields {
-			columns = append(columns, importer.StrColumn([]string{f.ID, f.Name}, false,
+			func(f client.CustomField) {
+			columns = append(columns, importer.StrColumn(append([]string{f.ID, f.Name}, f.Alias...), false,
 				func(ctx context.Context, lineNumber int, origin, value string) error {
 					if record.Fields == nil {
 						record.Fields = map[string]interface{}{}
@@ -428,6 +431,7 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 					record.Fields[f.ID] = value
 					return nil
 				}))
+			}(f)
 		}
 
 		columns = append(columns, importer.StrColumn([]string{"department", "部门处室", "部门"}, false,
@@ -460,6 +464,10 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 		return importer.Row{
 			Columns: columns,
 			Commit: func(ctx context.Context) error {
+
+			fmt.Println("=======", columns)
+			fmt.Println("=======", record)
+
 				old, err := svc.employeeDao.FindByName(ctx, record.Name)
 				if err != nil && !errors.IsNotFound(err) {
 					return err

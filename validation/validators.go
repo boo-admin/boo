@@ -359,20 +359,20 @@ func getIPType(str string, l int) int {
 
 	switch {
 	case has_dot > -1 && has_colon == -1 && l >= 7 && l <= IPv4CIDR:
-		if isWithCIDR(str, l) == true {
+		if isWithCIDR(str, l) {
 			return IPv4CIDR
 		} else {
 			return IPv4
 		}
 	case has_dot == -1 && has_colon > -1 && l >= 6 && l <= IPv6CIDR:
-		if isWithCIDR(str, l) == true {
+		if isWithCIDR(str, l) {
 			return IPv6CIDR
 		} else {
 			return IPv6
 		}
 
 	case has_dot > -1 && has_colon > -1 && l >= 14 && l <= IPv4MappedIPv6:
-		if isWithCIDR(str, l) == true {
+		if isWithCIDR(str, l) {
 			return IPv4MappedIPv6CIDR
 		} else {
 			return IPv4MappedIPv6
@@ -446,7 +446,7 @@ func (i IPAddr) IsSatisfied(obj interface{}) bool {
 					end := net.ParseIP(ss[1])
 					if start != nil && end != nil &&
 						start.To4() != nil && end.To4() != nil &&
-						bytes.Equal(start.To4()[:3], end.To4()[:3]) {
+						bytes.Equal([]byte(start.To4())[:3], []byte(end.To4())[:3]) {
 						r1 := binary.BigEndian.Uint32(start.To4())
 						r2 := binary.BigEndian.Uint32(end.To4())
 						if r1 <= r2 {
@@ -608,7 +608,7 @@ func isPureTextStrict(str string) (bool, error) {
 		c := str[i]
 
 		// deny : control char (00-31 without 9(TAB) and Single 10(LF),13(CR)
-		if c >= 0 && c <= 31 && c != 9 && c != 10 && c != 13 {
+		if c >= 0 && c <= 31 && c != 9 && c != 10 && c != 13 { // nolint: staticcheck
 			return false, errors.New("detect control character")
 		}
 
@@ -669,7 +669,7 @@ func isPureTextNormal(str string) (bool, error) {
 	decoded_str := html.UnescapeString(str)
 
 	matched_urlencoded := urlencodedPattern.MatchString(decoded_str)
-	if matched_urlencoded == true {
+	if matched_urlencoded {
 		temp_buf, err := url.QueryUnescape(decoded_str)
 		if err == nil {
 			decoded_str = temp_buf
@@ -677,12 +677,12 @@ func isPureTextNormal(str string) (bool, error) {
 	}
 
 	matched_element := elementPattern.MatchString(decoded_str)
-	if matched_element == true {
+	if matched_element {
 		return false, errors.New("detect html element")
 	}
 
 	matched_cc := controlcharPattern.MatchString(decoded_str)
-	if matched_cc == true {
+	if matched_cc {
 		return false, errors.New("detect control character")
 	}
 
@@ -698,7 +698,7 @@ func (p PureText) IsSatisfied(obj interface{}) bool {
 		case STRICT:
 			ret, _ = isPureTextStrict(str)
 		case NORMAL:
-			ret, _ = isPureTextStrict(str)
+			ret, _ = isPureTextNormal(str)
 		}
 		return ret
 	}
@@ -747,12 +747,12 @@ func (f FilePath) IsSatisfied(obj interface{}) bool {
 
 		case ALLOW_RELATIVE_PATH:
 			ret = checkAllowRelativePath.MatchString(str)
-			if ret == false {
+			if !ret {
 				return true
 			}
 		default: //ONLY_FILENAME
 			ret = checkDenyRelativePath.MatchString(str)
-			if ret == false {
+			if !ret {
 				return true
 			}
 		}
