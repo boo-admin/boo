@@ -5,6 +5,7 @@ package users
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/boo-admin/boo/client"
 	gobatis "github.com/runner-mei/GoBatis"
@@ -61,6 +62,39 @@ type UserDao interface {
 	// <pagination /> <sort_by />
 	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]User, error)
 	FindByIDList(ctx context.Context, id []int64) ([]User, error)
+}
+
+// @gobatis.namespace boo
+type UserProfileDao interface {
+	// @type select
+	// @default SELECT value FROM <tablename type="UserProfile" /> WHERE user_id = #{userID} and name = #{name}
+	ReadProfile(ctx context.Context, userID int64, name string) (string, error)
+
+	// @type upsert
+	// @record_type UserProfile
+	WriteProfileByKey(ctx context.Context, userID int64, name, value string) error
+
+	// @record_type UserProfile
+	DeleteProfile(ctx context.Context, userID int64, name string) (int64, error)
+
+	// @record_type UserProfile
+	DeleteAllByUserID(ctx context.Context, userID int64) error
+
+	// @record_type UserProfile
+	DeleteAllByName(ctx context.Context, name string) error
+
+	// @default SELECT name, value FROM <tablename type="UserProfile" /> WHERE user_id = #{userID}
+	QueryBy(ctx context.Context, userID int64) (map[string]string, error)
+}
+
+type UserProfile struct {
+	TableName struct{} `json:"-" xorm:"boo_user_profiles"`
+	UserID    int64    `json:"user_id" xorm:"user_id pk unique(key)"`
+	Name      string   `json:"name" xorm:"name pk unique(key) notnull"`
+	Value     string   `json:"value,omitempty" xorm:"value"`
+
+	CreatedAt time.Time `json:"created_at,omitempty" xorm:"created_at created"`
+	UpdatedAt time.Time `json:"updated_at,omitempty" xorm:"updated_at updated"`
 }
 
 // @gobatis.namespace boo

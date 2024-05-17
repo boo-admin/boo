@@ -14,6 +14,7 @@ type Employee struct {
 	TableName    struct{}               `json:"-" xorm:"boo_employees"`
 	ID           int64                  `json:"id" xorm:"id pk autoincr"`
 	DepartmentID int64                  `json:"department_id,omitempty" xorm:"department_id null"`
+	UserID       int64                  `json:"user_id,omitempty" xorm:"user_id null"`
 	Name         string                 `json:"name" xorm:"name unique notnull"`
 	Nickname     string                 `json:"nickname" xorm:"nickname unique notnull"`
 	Description  string                 `json:"description,omitempty" xorm:"description clob null"`

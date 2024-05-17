@@ -99,11 +99,6 @@ func TestUserImport1(t *testing.T) {
 		t.Error(exceptedPhones)
 	}
 
-
-
-
-
-
 	reader, err = os.Open("./updatetest.xlsx")
 	if err != nil {
 		t.Error(err)
@@ -156,11 +151,6 @@ func TestUserImport1(t *testing.T) {
 		t.Error(exceptedPhones)
 	}
 }
-
-
-
-
-
 
 func TestEmployeeImport1(t *testing.T) {
 	app := app_tests.NewTestApp(t, nil)
@@ -245,11 +235,6 @@ func TestEmployeeImport1(t *testing.T) {
 		t.Error(phones)
 		t.Error(exceptedPhones)
 	}
-
-
-
-
-
 
 	reader, err = os.Open("./updatetest.xlsx")
 	if err != nil {

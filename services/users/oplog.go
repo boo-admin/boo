@@ -10,6 +10,8 @@ import (
 	gobatis "github.com/runner-mei/GoBatis"
 )
 
+var enableOplog = false
+
 type OperationLogger interface {
 	WithTx(tx gobatis.DBRunner) OperationLogger
 	LogRecord(ctx context.Context, ol *OperationLog) error

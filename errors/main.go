@@ -314,12 +314,18 @@ func NewOperationReject(name string) error {
 }
 
 func NewBadArgument(err error, operation, param string, value ...interface{}) error {
+	var msg string
 	if len(value) > 0 && value[0] != nil {
-		return WithCode(Wrap(err, "执行方法 '"+operation+"' 时，参数 '"+param+"' 不正确 - '"+fmt.Sprint(value[0])+"'"), http.StatusBadRequest)
+		msg = "执行方法 '"+operation+"' 时，参数 '"+param+"' 不正确 - '"+fmt.Sprint(value[0])+"'"
+	} else {
+		msg = "执行方法 '"+operation+"' 时，参数 '"+param+"' 不正确"
 	}
-	return WithCode(Wrap(err, "执行方法 '"+operation+"' 时，参数 '"+param+"' 不正确"), http.StatusBadRequest)
+	return &EncodeError{
+		Code:   http.StatusBadRequest,
+		Message: msg + ": " + err.Error(),
+		Fields: GetKeyValues(err),
+	}
 }
-
 
 type EncodeError struct {
 	Code      int                 `json:"code,omitempty"`
@@ -327,6 +333,10 @@ type EncodeError struct {
 	Details   string              `json:"details,omitempty"`
 	Fields    map[string]interface{} `json:"data,omitempty"`
 	Internals []EncodeError       `json:"internals,omitempty"`
+}
+
+func (err *EncodeError) Error() string {
+	return err.Message
 }
 
 func ToEncodeError(err error) *EncodeError {

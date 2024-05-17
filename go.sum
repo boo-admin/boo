@@ -543,6 +543,8 @@ github.com/rogpeppe/go-internal v1.11.0/go.mod h1:ddIwULY96R17DhadqLgMfk9H9tvdUz
 github.com/runner-mei/GoBatis v1.5.11/go.mod h1:fMct4SsoJkIrDvXZs3+C7Y7WM9UvRmIoYbfB3514FNc=
 github.com/runner-mei/GoBatis v1.5.14 h1:wFZ0xFnyJtbOdDlwWwnHcZpV/1nVU3qGkDEAN1pLYic=
 github.com/runner-mei/GoBatis v1.5.14/go.mod h1:fMct4SsoJkIrDvXZs3+C7Y7WM9UvRmIoYbfB3514FNc=
+github.com/runner-mei/GoBatis v1.5.16 h1:oJ18eYqLlATzP71JQo6bGPQcY932fkTfPIGPrIjlAlc=
+github.com/runner-mei/GoBatis v1.5.16/go.mod h1:fMct4SsoJkIrDvXZs3+C7Y7WM9UvRmIoYbfB3514FNc=
 github.com/runner-mei/errors v0.0.0-20220725054952-d7c9c10762ea/go.mod h1:s91civnRTNh6zlkofMdy16oWfwP+/NXDlm38g8GfHtw=
 github.com/runner-mei/errors v0.0.0-20240424085943-0f17d7e6c488 h1:v9fN66vIGfO0qLr7mSWmlK7jx/47KLKEPLleEvxeZa8=
 github.com/runner-mei/errors v0.0.0-20240424085943-0f17d7e6c488/go.mod h1:s91civnRTNh6zlkofMdy16oWfwP+/NXDlm38g8GfHtw=

@@ -12,7 +12,7 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/mei-rune/go-good-password v0.0.0-20231011004208-1e3fa0e30592
 	github.com/pressly/goose/v3 v3.20.0
-	github.com/runner-mei/GoBatis v1.5.14
+	github.com/runner-mei/GoBatis v1.5.16
 	github.com/runner-mei/gogen v0.0.0-20240501031212-1c7514d8fa2c
 	github.com/runner-mei/resty v0.0.0-20240501062326-469ddab26e4b
 	github.com/shakinm/xlsReader v0.9.12

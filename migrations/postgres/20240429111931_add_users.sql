@@ -18,7 +18,6 @@ CREATE TABLE IF NOT EXISTS boo_users (
 
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS boo_user_profiles (
-    id          bigserial PRIMARY KEY,
     user_id     bigint REFERENCES boo_users ON DELETE CASCADE,
     name        varchar(100) NOT NULL,
     value       text,

@@ -570,14 +570,14 @@ func (svc userService) Import(ctx context.Context, request *http.Request) error 
 
 		for _, f := range svc.fields {
 			func(f client.CustomField) {
-			columns = append(columns, importer.StrColumn(append([]string{f.ID, f.Name}, f.Alias...), false,
-				func(ctx context.Context, lineNumber int, origin, value string) error {
-					if record.Fields == nil {
-						record.Fields = map[string]interface{}{}
-					}
-					record.Fields[f.ID] = value
-					return nil
-				}))
+				columns = append(columns, importer.StrColumn(append([]string{f.ID, f.Name}, f.Alias...), false,
+					func(ctx context.Context, lineNumber int, origin, value string) error {
+						if record.Fields == nil {
+							record.Fields = map[string]interface{}{}
+						}
+						record.Fields[f.ID] = value
+						return nil
+					}))
 			}(f)
 		}
 
@@ -654,6 +654,9 @@ func (svc userService) Import(ctx context.Context, request *http.Request) error 
 }
 
 func (svc userService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, user *User, importUser bool) {
+	if !enableOplog {
+		return
+	}
 	records := make([]ChangeRecord, 0, 10)
 	if user.DepartmentID > 0 {
 		record := ChangeRecord{
@@ -718,6 +721,9 @@ func (svc userService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUse
 }
 
 func (svc userService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, user, old *User, importUser bool) {
+	if !enableOplog {
+		return
+	}
 	records := make([]ChangeRecord, 0, 10)
 	if user.DepartmentID != old.DepartmentID {
 		var oldDepart, newDepart string
@@ -821,6 +827,9 @@ func (svc userService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUse
 }
 
 func (svc userService) logResetPassword(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, username string, importUser bool) {
+	if !enableOplog {
+		return
+	}
 	oplogger := svc.operationLogger
 	if tx != nil {
 		oplogger = oplogger.WithTx(tx.DB())
@@ -846,6 +855,9 @@ func (svc userService) logResetPassword(ctx context.Context, tx *gobatis.Tx, cur
 }
 
 func (svc userService) logDelete(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, oldUser *User) {
+	if !enableOplog {
+		return
+	}
 	oplogger := svc.operationLogger
 	if tx != nil {
 		oplogger = oplogger.WithTx(tx.DB())

@@ -2,6 +2,7 @@ package users
 
 import (
 	"context"
+	"sort"
 	"strconv"
 
 	"github.com/boo-admin/boo/client"
@@ -191,6 +192,10 @@ func toDepartmentsTree(list []Department) []*Department {
 	for idx := range list {
 		if list[idx].ParentID <= 0 {
 			roots = append(roots, &list[idx])
+
+			sort.Slice(roots, func(i, j int) bool {
+				return roots[i].OrderNum < roots[j].OrderNum
+			})
 			continue
 		}
 		root := byID[list[idx].ParentID]
@@ -199,6 +204,10 @@ func toDepartmentsTree(list []Department) []*Department {
 			continue
 		}
 		root.Children = append(root.Children, &list[idx])
+
+		sort.Slice(root.Children, func(i, j int) bool {
+			return root.Children[i].OrderNum < root.Children[j].OrderNum
+		})
 	}
 	return roots
 }

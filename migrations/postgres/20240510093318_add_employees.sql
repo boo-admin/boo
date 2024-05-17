@@ -3,6 +3,7 @@
 CREATE TABLE IF NOT EXISTS boo_employees (
   id                          bigserial PRIMARY KEY,
   department_id               bigint NULL REFERENCES boo_departments(id) on delete set null,
+  user_id                     bigint NULL REFERENCES boo_users(id) on delete set null,
   name                        varchar(100) NOT NULL UNIQUE,
   nickname                    varchar(100) NOT NULL UNIQUE,
   description                 text,

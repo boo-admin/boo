@@ -423,14 +423,14 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 
 		for _, f := range svc.fields {
 			func(f client.CustomField) {
-			columns = append(columns, importer.StrColumn(append([]string{f.ID, f.Name}, f.Alias...), false,
-				func(ctx context.Context, lineNumber int, origin, value string) error {
-					if record.Fields == nil {
-						record.Fields = map[string]interface{}{}
-					}
-					record.Fields[f.ID] = value
-					return nil
-				}))
+				columns = append(columns, importer.StrColumn(append([]string{f.ID, f.Name}, f.Alias...), false,
+					func(ctx context.Context, lineNumber int, origin, value string) error {
+						if record.Fields == nil {
+							record.Fields = map[string]interface{}{}
+						}
+						record.Fields[f.ID] = value
+						return nil
+					}))
 			}(f)
 		}
 
@@ -464,10 +464,6 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 		return importer.Row{
 			Columns: columns,
 			Commit: func(ctx context.Context) error {
-
-			fmt.Println("=======", columns)
-			fmt.Println("=======", record)
-
 				old, err := svc.employeeDao.FindByName(ctx, record.Name)
 				if err != nil && !errors.IsNotFound(err) {
 					return err
@@ -495,6 +491,9 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 }
 
 func (svc employeeService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, employee *Employee, importEmployee bool) {
+	if !enableOplog {
+		return
+	}
 	records := make([]ChangeRecord, 0, 10)
 	if employee.DepartmentID > 0 {
 		record := ChangeRecord{
@@ -559,6 +558,9 @@ func (svc employeeService) logCreate(ctx context.Context, tx *gobatis.Tx, curren
 }
 
 func (svc employeeService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, employee, old *Employee, importEmployee bool) {
+	if !enableOplog {
+		return
+	}
 	records := make([]ChangeRecord, 0, 10)
 	if employee.DepartmentID != old.DepartmentID {
 		var oldDepart, newDepart string
@@ -662,6 +664,9 @@ func (svc employeeService) logUpdate(ctx context.Context, tx *gobatis.Tx, curren
 }
 
 func (svc employeeService) logDelete(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, oldEmployee *Employee) {
+	if !enableOplog {
+		return
+	}
 	oplogger := svc.operationLogger
 	if tx != nil {
 		oplogger = oplogger.WithTx(tx.DB())
