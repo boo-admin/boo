@@ -24,10 +24,10 @@ type DepartmentDao interface {
 	FindByID(ctx context.Context, id int64) (*Department, error)
 	FindByName(ctx context.Context, name string) (*Department, error)
 	// @default SELECT count(*) from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
-	//   name like <like value="keyword" /> or uuid like <like value="keyword" />
+	//   name like <like value="keyword" /> or uuid like <like value="keyword" /> </if>
 	Count(ctx context.Context, keyword string) (int64, error)
 	// @default SELECT * from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
-	//   name like <like value="keyword" /> or uuid like <like value="keyword" />
+	//   name like <like value="keyword" /> or uuid like <like value="keyword" /> </if>
 	// <pagination /> <sort_by />
 	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]Department, error)
 }

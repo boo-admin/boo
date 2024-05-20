@@ -35,7 +35,6 @@ func NewServer(logger *slog.Logger, params map[string]string, toRealDir func(con
 	}
 	srv.Factory = dbFactory
 
-
 	err = RunMigrations(context.Background(), dbFactory.DriverName(), dbFactory.DB().(*sql.DB), params["db.reset_db"] == "true")
 	if err != nil {
 		return nil, err
@@ -69,7 +68,6 @@ func NewServer(logger *slog.Logger, params map[string]string, toRealDir func(con
 		return nil, err
 	}
 	srv.Users = usvc
-
 
 	employeeSvc, err := users.NewEmployees(logger, params, dbFactory, srv.OperationLogger, toRealDir)
 	if err != nil {

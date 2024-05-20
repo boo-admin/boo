@@ -145,5 +145,5 @@ const (
 	OpCreateEmployee = "createemployee"
 	OpUpdateEmployee = "updateemployee"
 	OpDeleteEmployee = "deleteemployee"
-	OpViewEmployee = "viewemployee"
+	OpViewEmployee   = "viewemployee"
 )

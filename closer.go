@@ -3,10 +3,9 @@ package boo
 import (
 	"io"
 	"sync"
-	
+
 	"github.com/boo-admin/boo/client"
 )
-
 
 type CloseFunc = client.CloseFunc
 

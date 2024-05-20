@@ -14,8 +14,8 @@ var (
 		Name: "邮箱",
 	}
 	Phone = CustomField{
-		ID:   "phone",
-		Name: "电话",
+		ID:    "phone",
+		Name:  "电话",
 		Alias: []string{"手机"},
 	}
 
@@ -28,9 +28,9 @@ var (
 )
 
 type CustomField struct {
-	ID           string `json:"id,omitempty"`
-	Name         string `json:"name,omitempty"`
+	ID   string `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
 	// 主要定义导入时的字段别名
 	Alias        []string `json:"alias,omitempty"`
-	DefaultValue string `json:"default,omitempty"`
+	DefaultValue string   `json:"default,omitempty"`
 }

@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/exp/slog"
 	"github.com/boo-admin/boo/errors"
 	"github.com/go-playground/locales/en"
 	"github.com/go-playground/locales/zh"
@@ -18,6 +17,7 @@ import (
 	validator "github.com/go-playground/validator/v10"
 	entran "github.com/go-playground/validator/v10/translations/en"
 	zhtran "github.com/go-playground/validator/v10/translations/zh"
+	"golang.org/x/exp/slog"
 	// "github.com/go-playground/validator/v10/translations/fr"
 	// "github.com/go-playground/validator/v10/translations/id"
 	// "github.com/go-playground/validator/v10/translations/ja"

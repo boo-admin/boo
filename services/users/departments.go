@@ -9,9 +9,9 @@ import (
 	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/services/authn"
 	"github.com/boo-admin/boo/validation"
+	"github.com/google/uuid"
 	gobatis "github.com/runner-mei/GoBatis"
 	"golang.org/x/exp/slog"
-	"github.com/google/uuid"
 )
 
 func NewDepartments(logger *slog.Logger,

@@ -32,9 +32,9 @@ type HTTPCoder interface {
 }
 
 type withMessage struct {
-	err error
+	err      error
 	noparent bool
-	msg string
+	msg      string
 }
 
 var _ Wrapper = &withMessage{}
@@ -316,23 +316,23 @@ func NewOperationReject(name string) error {
 func NewBadArgument(err error, operation, param string, value ...interface{}) error {
 	var msg string
 	if len(value) > 0 && value[0] != nil {
-		msg = "执行方法 '"+operation+"' 时，参数 '"+param+"' 不正确 - '"+fmt.Sprint(value[0])+"'"
+		msg = "执行方法 '" + operation + "' 时，参数 '" + param + "' 不正确 - '" + fmt.Sprint(value[0]) + "'"
 	} else {
-		msg = "执行方法 '"+operation+"' 时，参数 '"+param+"' 不正确"
+		msg = "执行方法 '" + operation + "' 时，参数 '" + param + "' 不正确"
 	}
 	return &EncodeError{
-		Code:   http.StatusBadRequest,
+		Code:    http.StatusBadRequest,
 		Message: msg + ": " + err.Error(),
-		Fields: GetKeyValues(err),
+		Fields:  GetKeyValues(err),
 	}
 }
 
 type EncodeError struct {
-	Code      int                 `json:"code,omitempty"`
-	Message   string              `json:"message"`
-	Details   string              `json:"details,omitempty"`
+	Code      int                    `json:"code,omitempty"`
+	Message   string                 `json:"message"`
+	Details   string                 `json:"details,omitempty"`
 	Fields    map[string]interface{} `json:"data,omitempty"`
-	Internals []EncodeError       `json:"internals,omitempty"`
+	Internals []EncodeError          `json:"internals,omitempty"`
 }
 
 func (err *EncodeError) Error() string {
@@ -341,8 +341,8 @@ func (err *EncodeError) Error() string {
 
 func ToEncodeError(err error) *EncodeError {
 	return &EncodeError{
-		Code:   GetErrorCode(err),
+		Code:    GetErrorCode(err),
 		Message: err.Error(),
-		Fields: GetKeyValues(err),
+		Fields:  GetKeyValues(err),
 	}
 }

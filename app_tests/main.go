@@ -49,7 +49,7 @@ func NewTestApp(t testing.TB, params map[string]string) *TestApp {
 		Logger:     logger,
 		Params:     params,
 		CurrentDir: currentDir,
-		BaseURL: "http://127.0.0.1:1323/boo/api/v1",
+		BaseURL:    "http://127.0.0.1:1323/boo/api/v1",
 	}
 }
 

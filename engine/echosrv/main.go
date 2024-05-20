@@ -17,7 +17,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	echoSwagger "github.com/swaggo/echo-swagger" // echo-swagger middleware
-	_ "github.com/swaggo/files/v2"                  // swagger embed files
+	_ "github.com/swaggo/files/v2"               // swagger embed files
 )
 
 func Start(srv *boo.Server, prefix, listenAddress string) (io.Closer, error) {
@@ -46,6 +46,7 @@ func Run(srv *boo.Server, prefixPath, listenAddress string) error {
 }
 
 var middlewares []echo.MiddlewareFunc
+
 func Use(middleware ...echo.MiddlewareFunc) {
 	middlewares = append(middlewares, middleware...)
 }

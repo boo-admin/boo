@@ -2,9 +2,9 @@
 package boo
 
 import (
+	_ "github.com/boo-admin/boo/services/docs"
 	_ "github.com/runner-mei/GoBatis"
 	_ "github.com/runner-mei/gogen/v2/gengen"
-	_ "github.com/boo-admin/boo/services/docs"
 )
 
 // @title           Boo Admin API
