@@ -32,6 +32,7 @@ type UsersForHTTP interface {
 	// @Accept  json
 	// @Produce json
 	// @Router  /users/export/{format} [get]
+	// @x-gogen-noreturn true
 	Export(ctx context.Context, format string, inline bool, writer http.ResponseWriter) error
 
 	// @Summary 上传一份用户列表，并创建（或更新）用户信息
@@ -53,6 +54,7 @@ type EmployeesForHTTP interface {
 	// @Accept  json
 	// @Produce json
 	// @Router  /employees/export/{format} [get]
+	// @x-gogen-noreturn true
 	Export(ctx context.Context, format string, inline bool, writer http.ResponseWriter) error
 
 	// @Summary 上传一份员工列表，并创建（或更新）员工信息

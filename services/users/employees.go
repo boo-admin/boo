@@ -410,12 +410,12 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 		record := &Employee{}
 
 		var columns = make([]importer.Column, 0, 5+len(svc.fields))
-		columns = append(columns, importer.StrColumn([]string{"name", "用户", "姓名"}, true,
+		columns = append(columns, importer.StrColumn([]string{"name", "用户", "用户名", "用户名称"}, true,
 			func(ctx context.Context, lineNumber int, origin, value string) error {
 				record.Name = value
 				return nil
 			}))
-		columns = append(columns, importer.StrColumn([]string{"zh_name", "中文名"}, false,
+		columns = append(columns, importer.StrColumn([]string{"zh_name", "中文名", "姓名"}, false,
 			func(ctx context.Context, lineNumber int, origin, value string) error {
 				record.Nickname = value
 				return nil
