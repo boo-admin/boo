@@ -72,11 +72,11 @@ del /s .\services\users\*gobatis.go
 :clean_ok
 
 @if not defined is_generate goto generate_ok
+
+mkdir .\services\docs
 go generate ./client
 go generate ./services/users
 go generate .
-mkdir .\services\docs
-swag init  --generalInfo doc.go --output .\services\docs
 :generate_ok
 
 

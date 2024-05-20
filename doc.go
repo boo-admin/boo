@@ -1,3 +1,4 @@
+//go:generate swag init  --generalInfo doc.go --output ./services/docs
 package boo
 
 import (
@@ -5,7 +6,6 @@ import (
 	_ "github.com/runner-mei/gogen/v2/gengen"
 	_ "github.com/boo-admin/boo/services/docs"
 )
-
 
 // @title           Boo Admin API
 // @version         1.0
