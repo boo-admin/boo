@@ -11,6 +11,7 @@ import (
 	"github.com/boo-admin/boo/validation"
 	gobatis "github.com/runner-mei/GoBatis"
 	"golang.org/x/exp/slog"
+	"github.com/google/uuid"
 )
 
 func NewDepartments(logger *slog.Logger,
@@ -32,7 +33,7 @@ type departmentService struct {
 	dao DepartmentDao
 }
 
-func (svc departmentService) Insert(ctx context.Context, department *Department) (int64, error) {
+func (svc departmentService) Create(ctx context.Context, department *Department) (int64, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return 0, err
@@ -41,6 +42,10 @@ func (svc departmentService) Insert(ctx context.Context, department *Department)
 		return 0, errors.Wrap(err, "判断当前部门是否有权限失败")
 	} else if !ok {
 		return 0, errors.NewOperationReject(authn.OpCreateDepartment)
+	}
+
+	if department.UUID == "" {
+		department.UUID = uuid.NewString()
 	}
 
 	v := validation.Default.New()
@@ -91,11 +96,18 @@ func (svc departmentService) UpdateByID(ctx context.Context, id int64, departmen
 		if exists, err := svc.dao.NameExists(ctx, department.Name); err != nil {
 			return errors.Wrap(err, "查询部门名 '"+department.Name+"' 是否已存在失败")
 		} else if exists {
-			v.Error("name", "无法新建部门 '"+department.Name+"'，该部门已存在")
+			v.Error("name", "无法更新部门 '"+department.Name+"'，该部门的新名称已经存在")
 		}
 		if v.HasErrors() {
 			return v.ToError()
 		}
+	}
+	if department.UUID == "" {
+		department.UUID = old.UUID
+	}
+	if department.UUID != old.UUID {
+		v.Error("uuid", "部门的 'uuid' 不可修改")
+		return v.ToError()
 	}
 
 	err = svc.dao.UpdateByID(ctx, id, department)
@@ -158,10 +170,10 @@ func (svc departmentService) FindByName(ctx context.Context, name string) (*Depa
 
 	return svc.dao.FindByName(ctx, name)
 }
-func (svc departmentService) Count(ctx context.Context) (int64, error) {
-	return svc.dao.Count(ctx)
+func (svc departmentService) Count(ctx context.Context, keyword string) (int64, error) {
+	return svc.dao.Count(ctx, keyword)
 }
-func (svc departmentService) List(ctx context.Context) ([]Department, error) {
+func (svc departmentService) List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]Department, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -172,10 +184,10 @@ func (svc departmentService) List(ctx context.Context) ([]Department, error) {
 		return nil, errors.NewOperationReject(authn.OpViewDepartment)
 	}
 
-	return svc.dao.List(ctx)
+	return svc.dao.List(ctx, keyword, sort, offset, limit)
 }
 func (svc departmentService) GetTree(ctx context.Context) ([]*Department, error) {
-	results, err := svc.List(ctx)
+	results, err := svc.List(ctx, "", "", 0, 0)
 	if err != nil {
 		return nil, err
 	}

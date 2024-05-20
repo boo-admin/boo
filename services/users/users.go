@@ -126,7 +126,7 @@ func (svc userService) ValidateUser(v *validation.Validation, user *User) bool {
 	return v.HasErrors()
 }
 
-func (svc userService) Insert(ctx context.Context, user *User) (int64, error) {
+func (svc userService) Create(ctx context.Context, user *User) (int64, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return 0, err

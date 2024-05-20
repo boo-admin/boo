@@ -44,7 +44,7 @@ func NewServer(logger *slog.Logger, params map[string]string, toRealDir func(con
 	session := dbFactory.SessionReference()
 	userDao := users.NewUserDao(session)
 
-	srv.OperationLogger = users.NewOperationLogger(session)
+	srv.OperationLogger = users.NewOperationLogger(dbFactory)
 	operationQueryer, err := users.NewOperationQueryer(params, toRealDir, session,
 		func(ctx context.Context, id int64) (string, error) {
 			user, err := userDao.FindByID(ctx, id)

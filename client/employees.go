@@ -52,7 +52,7 @@ type Employees interface {
 	// @Produce  json
 	// @Router /employees [post]
 	// @Success 200 {int64} int64  "成功时返回新建用户的ID"
-	Insert(ctx context.Context, employee *Employee) (int64, error)
+	Create(ctx context.Context, employee *Employee) (int64, error)
 
 	// @Summary 修改用户名称
 	// @Param    id      path int     true     "用户ID"

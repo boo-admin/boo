@@ -23,8 +23,13 @@ type DepartmentDao interface {
 	DeleteByID(ctx context.Context, id int64) error
 	FindByID(ctx context.Context, id int64) (*Department, error)
 	FindByName(ctx context.Context, name string) (*Department, error)
-	Count(ctx context.Context) (int64, error)
-	List(ctx context.Context) ([]Department, error)
+	// @default SELECT count(*) from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
+	//   name like <like value="keyword" /> or uuid like <like value="keyword" />
+	Count(ctx context.Context, keyword string) (int64, error)
+	// @default SELECT * from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
+	//   name like <like value="keyword" /> or uuid like <like value="keyword" />
+	// <pagination /> <sort_by />
+	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]Department, error)
 }
 
 // @gobatis.namespace boo

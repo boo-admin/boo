@@ -63,15 +63,15 @@ func Wrap(err error, msg string) error {
 }
 
 func Unwrap(err error) error {
-	return errors.Unwrap(err)
+	return xerrors.Unwrap(err)
 }
 
 func Is(err, target error) bool {
-	return errors.Is(err, target)
+	return xerrors.Is(err, target)
 }
 
 func As(err error, target interface{}) bool {
-	return errors.As(err, target)
+	return xerrors.As(err, target)
 }
 
 func Opaque(err error) error {

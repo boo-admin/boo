@@ -12,7 +12,8 @@ type Department struct {
 	TableName struct{}  `json:"-" xorm:"boo_departments"`
 	ID        int64     `json:"id" xorm:"id pk autoincr"`
 	ParentID  int64     `json:"parent_id" xorm:"parent_id null"`
-	Name      string    `json:"name" xorm:"name null"`
+	UUID      string    `json:"uuid" xorm:"uuid unique null"`
+	Name      string    `json:"name" xorm:"name notnull"`
 	OrderNum  int       `json:"order_num" xorm:"order_num null"`
 	CreatedAt time.Time `json:"created_at,omitempty" xorm:"created_at created"`
 	UpdatedAt time.Time `json:"updated_at,omitempty" xorm:"updated_at updated"`
@@ -27,7 +28,7 @@ type Departments interface {
 	// @Produce  json
 	// @Router /departments [post]
 	// @Success 200 {int64} int64  "成功时返回新建部门的ID"
-	Insert(ctx context.Context, department *Department) (int64, error)
+	Create(ctx context.Context, department *Department) (int64, error)
 
 	// @Summary 修改部门名称
 	// @Param id            path int                       true     "部门ID"
@@ -65,16 +66,21 @@ type Departments interface {
 	// @Summary 查询部门数目
 	// @Accept  json
 	// @Produce json
+	// @Param    keyword       query string                   false     "查询参数"
 	// @Router  /departments/count [get]
 	// @Success 200 {int64} int64  "返回所有部门数目"
-	Count(ctx context.Context) (int64, error)
+	Count(ctx context.Context, keyword string) (int64, error)
 
 	// @Summary 查询所有部门
 	// @Accept  json
 	// @Produce json
+	// @Param    keyword       query string                   false     "查询参数"
+	// @Param    sort          query string                   false     "排序字段"
+	// @Param    offset        query int                      false     "offset"
+	// @Param    limit         query int                      false     "limit"
 	// @Router  /departments [get]
 	// @Success 200 {array} Department  "返回所有部门"
-	List(ctx context.Context) ([]Department, error)
+	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]Department, error)
 
 	// @Summary 查询所有部门, 并将它转成 tree 形式返回
 	// @Accept  json

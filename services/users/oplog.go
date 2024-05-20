@@ -127,6 +127,6 @@ func NewOperationQueryer(params map[string]string,
 	return operationQueryer{names: names, dao: NewOperationLogDao(session)}, nil
 }
 
-func NewOperationLogger(session gobatis.SqlSession) OperationLogger {
-	return operationLogger{dao: NewOperationLogDao(session)}
+func NewOperationLogger(session *gobatis.SessionFactory) OperationLogger {
+	return operationLogger{dao: NewOperationLogDao(session.SessionReference())}
 }

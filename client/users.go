@@ -94,7 +94,7 @@ type Users interface {
 	// @Produce  json
 	// @Router /users [post]
 	// @Success 200 {int64} int64  "成功时返回新建用户的ID"
-	Insert(ctx context.Context, user *User) (int64, error)
+	Create(ctx context.Context, user *User) (int64, error)
 
 	// @Summary 修改用户名称
 	// @Param    id      path int     true     "用户ID"

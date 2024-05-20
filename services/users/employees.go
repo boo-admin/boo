@@ -74,7 +74,7 @@ func (svc employeeService) ValidateEmployee(v *validation.Validation, employee *
 	return v.HasErrors()
 }
 
-func (svc employeeService) Insert(ctx context.Context, employee *Employee) (int64, error) {
+func (svc employeeService) Create(ctx context.Context, employee *Employee) (int64, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return 0, err
