@@ -1,4 +1,4 @@
-//go:generate swag init  --generalInfo doc.go --output ./services/docs
+//go:generate swag init --instanceName booswagger --generalInfo doc.go --output ./services/docs
 package boo
 
 import (

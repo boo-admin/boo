@@ -82,7 +82,7 @@ func run(srv *boo.Server, prefix, listenAddress string, closer *boo.SyncCloser) 
 
 	// Routes
 	mux := e.Group(prefix)
-	EnalbeSwaggerAt(mux, "/swagger", docs.SwaggerInfo.InstanceName())
+	EnalbeSwaggerAt(mux, "/swagger", docs.SwaggerInfobooswagger.InstanceName())
 	client.InitOperationQueryer(mux, srv.OperationQueryer)
 	client.InitDepartments(mux, srv.Departments)
 	client.InitUsers(mux, srv.Users)
