@@ -21,7 +21,11 @@ func GetMigrationDir() (fs.FS, error) {
 }
 
 func RunMigrations(ctx context.Context, driverName string, db *sql.DB, reset bool) error {
-	goose.SetBaseFS(GetMigrationDir())
+	dir, err := GetMigrationDir()
+	if err != nil {
+		return errors.Wrap(err, "加载 migrations 目录失败")
+	}
+	goose.SetBaseFS(dir)
 
 	if err := goose.SetDialect(driverName); err != nil {
 		return err
