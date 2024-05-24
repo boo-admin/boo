@@ -30,6 +30,8 @@ type DepartmentDao interface {
 	//   name like <like value="keyword" /> or uuid like <like value="keyword" /> </if>
 	// <pagination /> <sort_by />
 	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]Department, error)
+
+	FindByIDList(ctx context.Context, id []int64) ([]Department, error)
 }
 
 // @gobatis.namespace boo

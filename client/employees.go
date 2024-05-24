@@ -23,6 +23,8 @@ type Employee struct {
 	Fields       map[string]interface{} `json:"fields" xorm:"fields jsonb null"`
 	CreatedAt    time.Time              `json:"created_at,omitempty" xorm:"created_at created"`
 	UpdatedAt    time.Time              `json:"updated_at,omitempty" xorm:"updated_at updated"`
+
+	Department   *Department              `json:"department,omitempty" xorm:"-"`
 }
 
 func (u *Employee) GetPhone() string {
