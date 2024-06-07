@@ -162,8 +162,9 @@ func (svc userService) insert(ctx context.Context, currentUser authn.AuthUser, u
 	}
 
 	var id int64
-	return id, svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
-		id, err := svc.users.Insert(ctx, user)
+	var err error
+	err = svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
+		id, err = svc.users.Insert(ctx, user)
 		if err != nil {
 			return err
 		}
@@ -171,6 +172,7 @@ func (svc userService) insert(ctx context.Context, currentUser authn.AuthUser, u
 		svc.logCreate(ctx, tx, currentUser, id, user, importUser)
 		return nil
 	})
+	return id, err
 }
 func (svc userService) UpdateByID(ctx context.Context, id int64, user *User) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)

@@ -104,8 +104,9 @@ func (svc employeeService) insert(ctx context.Context, currentUser authn.AuthUse
 	}
 
 	var id int64
-	return id, svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
-		id, err := svc.employeeDao.Insert(ctx, employee)
+	var err error
+	err = svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
+		id, err = svc.employeeDao.Insert(ctx, employee)
 		if err != nil {
 			return err
 		}
@@ -113,6 +114,7 @@ func (svc employeeService) insert(ctx context.Context, currentUser authn.AuthUse
 		svc.logCreate(ctx, tx, currentUser, id, employee, importEmployee)
 		return nil
 	})
+	return id, err
 }
 func (svc employeeService) UpdateByID(ctx context.Context, id int64, employee *Employee) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
