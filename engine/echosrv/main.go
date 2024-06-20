@@ -2,15 +2,13 @@ package echosrv
 
 import (
 	"context"
-	"errors"
-	"io"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/boo-admin/boo"
 	"github.com/boo-admin/boo/client"
 	"github.com/boo-admin/boo/engine/echofunctions"
+	"github.com/boo-admin/boo/goutils/httpext"
 	"github.com/boo-admin/boo/services/authn"
 	"github.com/boo-admin/boo/services/docs"
 	"github.com/boo-admin/boo/services/users"
@@ -19,31 +17,6 @@ import (
 	echoSwagger "github.com/swaggo/echo-swagger" // echo-swagger middleware
 	_ "github.com/swaggo/files/v2"               // swagger embed files
 )
-
-func Start(srv *boo.Server, prefix, listenAddress string) (io.Closer, error) {
-	errC := make(chan error, 1)
-
-	var closer boo.SyncCloser
-	go func() {
-		err := run(srv, prefix, listenAddress, &closer)
-		if err != nil {
-			errC <- err
-		}
-	}()
-
-	timer := time.NewTimer(5 * time.Second)
-	select {
-	case err := <-errC:
-		return nil, err
-	case <-timer.C:
-		return &closer, nil
-	}
-}
-
-func Run(srv *boo.Server, prefixPath, listenAddress string) error {
-	var closer boo.SyncCloser
-	return run(srv, prefixPath, listenAddress, &closer)
-}
 
 var middlewares []echo.MiddlewareFunc
 
@@ -67,39 +40,6 @@ func TestAuth() echo.MiddlewareFunc {
 			return false, nil
 		}),
 	})
-}
-
-func run(srv *boo.Server, prefix, listenAddress string, closer *boo.SyncCloser) error {
-	// Echo instance
-	e := echo.New()
-
-	// Middleware
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-	for _, m := range middlewares {
-		e.Use(m)
-	}
-
-	// Routes
-	mux := e.Group(prefix)
-	EnalbeSwaggerAt(mux, "/swagger", docs.SwaggerInfobooswagger.InstanceName())
-	client.InitOperationQueryer(mux, srv.OperationQueryer)
-	client.InitDepartments(mux, srv.Departments)
-	client.InitUsers(mux, srv.Users)
-	users.InitUsersForHTTP(mux, srv.Users)
-	client.InitEmployees(mux, srv.Employees)
-	users.InitEmployeesForHTTP(mux, srv.Employees)
-
-	closer.Set(client.CloseFunc(func() error {
-		return e.Shutdown(context.Background())
-	}))
-	defer closer.Set(nil)
-
-	err := e.Start(listenAddress)
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		return err
-	}
-	return nil
 }
 
 func EnalbeSwaggerAt(e *echo.Group, prefix, instanceName string) {
@@ -131,4 +71,38 @@ func EnalbeSwaggerAt(e *echo.Group, prefix, instanceName string) {
 		}
 	})
 	mux.Any("/*", handler)
+}
+
+func New(srv *boo.Server, prefix string) (*echo.Echo, error) {
+	// Echo instance
+	e := echo.New()
+
+	// Middleware
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	for _, m := range middlewares {
+		e.Use(m)
+	}
+
+	// Routes
+	mux := e.Group(prefix)
+	EnalbeSwaggerAt(mux, "/swagger", docs.SwaggerInfobooswagger.InstanceName())
+	client.InitOperationQueryer(mux, srv.OperationQueryer)
+	client.InitDepartments(mux, srv.Departments)
+	client.InitUsers(mux, srv.Users)
+	users.InitUsersForHTTP(mux, srv.Users)
+	client.InitEmployees(mux, srv.Employees)
+	users.InitEmployeesForHTTP(mux, srv.Employees)
+
+	return e, nil
+}
+
+func Run(srv *boo.Server, prefix, listenAt string) error {
+	engine, err := New(srv, prefix)
+	if err != nil {
+		return err
+	}
+
+	runner := httpext.NewRunner(srv.Logger, listenAt)
+	return runner.Run(context.Background(), engine)
 }

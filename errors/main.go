@@ -10,6 +10,9 @@ import (
 	xfmt "golang.org/x/exp/errors/fmt"
 )
 
+// 本库只作了一个很简单的 error 封装，但有少了一个很重要的设计，那就是
+// EncodeError 不支持 Is(error) 和 Unwarp()
+
 var (
 	ErrNotFound           = sql.ErrNoRows
 	ErrUnauthorized       = errors.New("unauthorized")
@@ -333,6 +336,10 @@ type EncodeError struct {
 	Details   string                 `json:"details,omitempty"`
 	Fields    map[string]interface{} `json:"data,omitempty"`
 	Internals []EncodeError          `json:"internals,omitempty"`
+}
+
+func (err *EncodeError) ErrorCode() int {
+	return err.Code
 }
 
 func (err *EncodeError) Error() string {

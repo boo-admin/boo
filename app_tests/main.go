@@ -1,9 +1,9 @@
 package app_tests
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +12,7 @@ import (
 	"github.com/boo-admin/boo"
 	"github.com/boo-admin/boo/client"
 	"github.com/boo-admin/boo/engine/echosrv"
+	"github.com/boo-admin/boo/goutils/httpext"
 	_ "github.com/lib/pq"
 	"golang.org/x/exp/slog"
 )
@@ -21,8 +22,8 @@ type TestApp struct {
 	Params     map[string]string
 	CurrentDir string
 	Server     *boo.Server
-	Closer     io.Closer
-	BaseURL    string
+
+	runner *httpext.Runner
 }
 
 func setDefault(params map[string]string, key, value string) {
@@ -49,8 +50,11 @@ func NewTestApp(t testing.TB, params map[string]string) *TestApp {
 		Logger:     logger,
 		Params:     params,
 		CurrentDir: currentDir,
-		BaseURL:    "http://127.0.0.1:1323/boo/api/v1",
 	}
+}
+
+func (app *TestApp) BaseURL() string {
+	return app.runner.MustURL() + "/boo/api/v1"
 }
 
 func (app *TestApp) Start(t testing.TB) {
@@ -62,16 +66,26 @@ func (app *TestApp) Start(t testing.TB) {
 	app.Server = srv
 	echosrv.Use(echosrv.TestAuth())
 
-	closer, err := echosrv.Start(srv, "/boo/api/v1", ":1323")
+	engine, err := echosrv.New(srv, "/boo/api/v1")
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
-	app.Closer = closer
+
+	runner := httpext.NewRunner(app.Logger, ":1323")
+	err = runner.Start(context.Background(), engine)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+	app.runner = runner
 }
 
 func (app *TestApp) Stop(t testing.TB) {
-	err := app.Closer.Close()
+	if app.runner == nil {
+		return
+	}
+	err := app.runner.Stop(context.Background())
 	if err != nil {
 		t.Error(err)
 	}

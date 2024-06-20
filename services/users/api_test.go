@@ -21,7 +21,7 @@ func TestUserImport1(t *testing.T) {
 	defer app.Stop(t)
 
 	ctx := context.Background()
-	pxy, err := client.NewResty(app.BaseURL)
+	pxy, err := client.NewResty(app.BaseURL())
 	if err != nil {
 		t.Error(err)
 		return
@@ -38,7 +38,7 @@ func TestUserImport1(t *testing.T) {
 
 	// var dbnow = app.DbNow()
 
-	urlstr, err := url.JoinPath(app.BaseURL, "users/import")
+	urlstr, err := url.JoinPath(app.BaseURL(), "users/import")
 	if err != nil {
 		t.Error(err)
 		return
@@ -158,7 +158,7 @@ func TestEmployeeImport1(t *testing.T) {
 	defer app.Stop(t)
 
 	ctx := context.Background()
-	pxy, err := client.NewResty(app.BaseURL)
+	pxy, err := client.NewResty(app.BaseURL())
 	if err != nil {
 		t.Error(err)
 		return
@@ -175,7 +175,7 @@ func TestEmployeeImport1(t *testing.T) {
 
 	// var dbnow = app.DbNow()
 
-	urlstr, err := url.JoinPath(app.BaseURL, "employees/import")
+	urlstr, err := url.JoinPath(app.BaseURL(), "employees/import")
 	if err != nil {
 		t.Error(err)
 		return
