@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"gitee.com/Trisia/gotlcp/tlcp"
-	"github.com/runner-mei/errors"
+	"github.com/boo-admin/boo/errors"
 )
 
 func (r *Runner) enableTlcp(listener net.Listener) (net.Listener, error) {

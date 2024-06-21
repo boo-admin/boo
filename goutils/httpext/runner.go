@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/boo-admin/boo/errors"
 	"github.com/mei-rune/ipfilter"
-	"github.com/runner-mei/errors"
 	"golang.org/x/exp/slog"
 )
 
@@ -52,14 +52,13 @@ func MakeHook(onStart, onStop func(context.Context, *Runner) error) Hook {
 
 func NewRunner(logger *slog.Logger, listenAt string) *Runner {
 	return &Runner{
-		Logger: logger,
-		Network: "tcp",
-		ListenAt: listenAt,
+		Logger:             logger,
+		Network:            "tcp",
+		ListenAt:           listenAt,
 		EnableTcpKeepAlive: true,
-		KeepAlivePeriod: 20 *time.Second,
+		KeepAlivePeriod:    20 * time.Second,
 	}
 }
-
 
 type Runner struct {
 	Logger             *slog.Logger
@@ -110,6 +109,18 @@ func (r *Runner) Flags(fs *flag.FlagSet) *flag.FlagSet {
 	fs.StringVar(&r.ListenAt, "listen_at", ":12345", "")
 	fs.BoolVar(&r.EnableTcpKeepAlive, "enable_tcpkeepalive", true, "是否启动 tcp 的 keepalive 选项")
 	fs.DurationVar(&r.KeepAlivePeriod, "tcpkeepalive_period", 1*time.Minute, "设置 tcp 的 keepalive 的 period 值")
+
+	fs.StringVar(&r.TLCP.SigCertFile, "tlcp_sig_cert_file", "", "国密 tlcp 中 sig 的证书文件")
+	fs.StringVar(&r.TLCP.SigKeyFile, "tlcp_sig_key_file", "", "国密 tlcp 中 sig 的 key 文件")
+	fs.StringVar(&r.TLCP.EncCertFile, "tlcp_enc_cert_file", "", "国密 tlcp 中 enc 的证书文件")
+	fs.StringVar(&r.TLCP.EncKeyFile, "tlcp_enc_key_file", "", "国密 tlcp 中 enc 的 key 文件")
+
+	fs.StringVar(&r.TLS.CertFile, "tls_cert_file", "", "tls 中的证书文件")
+	fs.StringVar(&r.TLS.KeyFile, "tls_key_file", "", "tls 中的 key 文件")
+	fs.StringVar(&r.TLS.MinTlsVersion, "tls_min_version", "", "tls 是最小版本")
+	fs.StringVar(&r.TLS.MaxTlsVersion, "tls_max_version", "", "tls 是最大版本")
+	fs.StringVar(&r.TLS.CipherSuites, "tls_cipher_suites", "", "tls 的算法")
+
 	return fs
 }
 
