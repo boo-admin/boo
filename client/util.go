@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/goutils/as"
 	"github.com/hjson/hjson-go/v4"
+	"github.com/runner-mei/resty"
 )
 
 type TimeRange struct {
@@ -164,4 +167,19 @@ func IsDirectory(dir string, e ...*error) bool {
 	}
 
 	return info.IsDir()
+}
+
+func ToResponseError(response *http.Response, msg string) error {
+	var sb strings.Builder
+
+	sb.WriteString(msg)
+	sb.WriteString(", ")
+	sb.WriteString(response.Status)
+	sb.WriteString(": ")
+	io.Copy(&sb, response.Body)
+	return errors.WithCode(errors.New(sb.String()), response.StatusCode)
+}
+
+func GetDefaultClient() *http.Client {
+	return resty.InsecureHttpClent
 }

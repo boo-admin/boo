@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"io/fs"
 
 	xerrors "golang.org/x/exp/errors"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -14,6 +15,7 @@ import (
 // EncodeError 不支持 Is(error) 和 Unwarp()
 
 var (
+	ErrSkipped      error = fs.SkipAll
 	ErrNotFound           = sql.ErrNoRows
 	ErrUnauthorized       = errors.New("unauthorized")
 	ErrCacheInvalid       = errors.New("permission cache is invald")
@@ -153,6 +155,10 @@ func WithCode(err error, code int) error {
 func WithErrorCode(err error, code int) error {
 	return &withCode{err: err, code: code}
 }
+func WithHTTPCode(err error, code int) error {
+	return &withCode{err: err, code: code}
+}
+
 
 func TryGetErrorCode(target error) (int, bool) {
 	if target == nil {
@@ -342,13 +348,17 @@ func (err *EncodeError) ErrorCode() int {
 	return err.Code
 }
 
+func (err *EncodeError) HTTPCode() int {
+	return ToHttpCode(err.Code)
+}
+
 func (err *EncodeError) Error() string {
 	return err.Message
 }
 
-func ToEncodeError(err error) *EncodeError {
+func ToEncodeError(err error, code ...int) *EncodeError {
 	return &EncodeError{
-		Code:    GetErrorCode(err),
+		Code:    GetErrorCode(err, code...),
 		Message: err.Error(),
 		Fields:  GetKeyValues(err),
 	}
