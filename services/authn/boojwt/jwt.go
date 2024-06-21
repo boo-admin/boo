@@ -1,4 +1,4 @@
-package boo
+package boojwt
 
 import (
 	"context"
@@ -24,11 +24,11 @@ type TokenCheckFunc func(ctx context.Context, req *http.Request, tokenStr string
 //   TokenVerify([]TokenFindFunc{
 //       TokenFromQuery,
 //   }, []TokenCheckFunc{
-//       JWTCheck(NewJWTAuth(...), TokenToUser),
+//       JWTCheckWithSetUser(NewJWTAuth(...), TokenToUser),
 //   })
 //   ......
 //
-//   func TokenToUser(ctx context.Context, token *jwt.Token) (authn.User, error) {
+//   func TokenToUser(ctx context.Context, req *http.Request, token *jwt.Token) (authn.User, error) {
 // 	    claims, ok := token.Claims.(*jwt.StandardClaims)
 // 	    if !ok {
 // 	    	return nil, errors.New("claims isnot jwt.StandardClaims")
@@ -80,7 +80,16 @@ func TokenVerify(findTokenFns []TokenFindFunc, checkTokenFns []TokenCheckFunc) a
 	}
 }
 
-func JWTCheck(ja *JWTAuth, readUser func(ctx context.Context, token *jwt.Token) (authn.AuthUser, error)) TokenCheckFunc {
+func JWTCheckWithSetUser(ja *JWTAuth, readUser func(ctx context.Context, req *http.Request, token *jwt.Token) (authn.AuthUser, error)) TokenCheckFunc {
+	return JWTCheck(ja, func(ctx context.Context, req *http.Request, token *jwt.Token) (context.Context, error) {
+		return authn.ContextWithReadCurrentUser(ctx, authn.ReadCurrentUserFunc(func(ctx context.Context) (authn.AuthUser, error) {
+			return readUser(ctx, req, token)
+		})), nil
+	})
+}
+
+
+func JWTCheck(ja *JWTAuth, handle func(ctx context.Context, req *http.Request, token *jwt.Token) (context.Context, error)) TokenCheckFunc {
 	return func(ctx context.Context, req *http.Request, tokenStr string) (context.Context, error) {
 		// Verify the token
 		token, err := ja.Decode(tokenStr)
@@ -112,9 +121,7 @@ func JWTCheck(ja *JWTAuth, readUser func(ctx context.Context, token *jwt.Token) 
 			return nil, err
 		}
 
-		return authn.ContextWithReadCurrentUser(ctx, authn.ReadCurrentUserFunc(func(ctx context.Context) (authn.AuthUser, error) {
-			return readUser(ctx, token)
-		})), nil
+		return handle(ctx, req, token)
 	}
 }
 

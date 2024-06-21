@@ -28,6 +28,8 @@ type Service struct {
 	HeartbeatAt time.Time `json:"heartbeat_at,omitempty"`
 
 	Paths []ServicePath `json:"paths,omitempty"`
+
+	SkipLoginPaths []string `json:"skip_login_paths,omitempty"`
 }
 
 type Client struct {
