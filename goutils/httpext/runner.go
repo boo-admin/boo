@@ -94,33 +94,32 @@ type Runner struct {
 }
 
 func (r *Runner) Flags(fs *flag.FlagSet) *flag.FlagSet {
-	fs.Func("ipfilter.allow_ips", "允许的 IP 列表（以逗号分隔）", func(s string) error {
+	fs.StringVar(&r.Network, "network", "http", "")
+	fs.StringVar(&r.ListenAt, "listen-at", ":12345", "")
+	fs.BoolVar(&r.EnableTcpKeepAlive, "tcpkeepalive-enable", true, "是否启动 tcp 的 keepalive 选项")
+	fs.DurationVar(&r.KeepAlivePeriod, "tcpkeepalive-period", 1*time.Minute, "设置 tcp 的 keepalive 的 period 值")
+
+	fs.StringVar(&r.TLCP.SigCertFile, "tlcp-sig-cert-file", "", "国密 tlcp 中 sig 的证书文件")
+	fs.StringVar(&r.TLCP.SigKeyFile, "tlcp-sig-key-file", "", "国密 tlcp 中 sig 的 key 文件")
+	fs.StringVar(&r.TLCP.EncCertFile, "tlcp-enc-cert-file", "", "国密 tlcp 中 enc 的证书文件")
+	fs.StringVar(&r.TLCP.EncKeyFile, "tlcp-enc-key-file", "", "国密 tlcp 中 enc 的 key 文件")
+
+	fs.StringVar(&r.TLS.CertFile, "tls-cert-file", "", "tls 中的证书文件")
+	fs.StringVar(&r.TLS.KeyFile, "tls-key-file", "", "tls 中的 key 文件")
+	fs.StringVar(&r.TLS.MinTlsVersion, "tls-min-version", "", "tls 是最小版本")
+	fs.StringVar(&r.TLS.MaxTlsVersion, "tls-max-version", "", "tls 是最大版本")
+	fs.StringVar(&r.TLS.CipherSuites, "tls-cipher-suites", "", "tls 的算法")
+
+	fs.Func("ipfilter-allow-ip-list", "允许的 IP 列表（以逗号分隔）", func(s string) error {
 		r.IPFilterOptions.AllowedIPs = strings.Split(s, ",")
 		return nil
 	})
-	fs.Func("ipfilter.blocked_ips", "不允许的 IP 列表（以逗号分隔）", func(s string) error {
+	fs.Func("ipfilter-blocked-ip-list", "不允许的 IP 列表（以逗号分隔）", func(s string) error {
 		r.IPFilterOptions.BlockedIPs = strings.Split(s, ",")
 		return nil
 	})
-	fs.BoolVar(&r.IPFilterOptions.BlockByDefault, "ipfilter.block_default", false, "缺省阻塞所有的IP")
-	fs.BoolVar(&r.IPFilterOptions.TrustProxy, "ipfilter.trust_proxy", true, "信任 http 代理传过来的IP")
-
-	fs.StringVar(&r.Network, "network", "https", "")
-	fs.StringVar(&r.ListenAt, "listen_at", ":12345", "")
-	fs.BoolVar(&r.EnableTcpKeepAlive, "enable_tcpkeepalive", true, "是否启动 tcp 的 keepalive 选项")
-	fs.DurationVar(&r.KeepAlivePeriod, "tcpkeepalive_period", 1*time.Minute, "设置 tcp 的 keepalive 的 period 值")
-
-	fs.StringVar(&r.TLCP.SigCertFile, "tlcp_sig_cert_file", "", "国密 tlcp 中 sig 的证书文件")
-	fs.StringVar(&r.TLCP.SigKeyFile, "tlcp_sig_key_file", "", "国密 tlcp 中 sig 的 key 文件")
-	fs.StringVar(&r.TLCP.EncCertFile, "tlcp_enc_cert_file", "", "国密 tlcp 中 enc 的证书文件")
-	fs.StringVar(&r.TLCP.EncKeyFile, "tlcp_enc_key_file", "", "国密 tlcp 中 enc 的 key 文件")
-
-	fs.StringVar(&r.TLS.CertFile, "tls_cert_file", "", "tls 中的证书文件")
-	fs.StringVar(&r.TLS.KeyFile, "tls_key_file", "", "tls 中的 key 文件")
-	fs.StringVar(&r.TLS.MinTlsVersion, "tls_min_version", "", "tls 是最小版本")
-	fs.StringVar(&r.TLS.MaxTlsVersion, "tls_max_version", "", "tls 是最大版本")
-	fs.StringVar(&r.TLS.CipherSuites, "tls_cipher_suites", "", "tls 的算法")
-
+	fs.BoolVar(&r.IPFilterOptions.BlockByDefault, "ipfilter-block-default", false, "缺省阻塞所有的IP")
+	fs.BoolVar(&r.IPFilterOptions.TrustProxy, "ipfilter-trust-proxy", true, "信任 http 代理传过来的IP")
 	return fs
 }
 

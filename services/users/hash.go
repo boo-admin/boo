@@ -4,25 +4,25 @@ import (
 	"context"
 	"encoding/hex"
 
+	"github.com/boo-admin/boo/client"
 	"github.com/boo-admin/boo/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var passwordHashers = map[string]func(map[string]string, func(context.Context, string) string) (UserPassworder, error){}
+var passwordHashers = map[string]func(env *client.Environment) (UserPassworder, error){}
 
-func RegisterPassworder(alg string, factory func(params map[string]string, toRealDir func(context.Context, string) string) (UserPassworder, error)) {
+func RegisterPassworder(alg string, factory func(env *client.Environment) (UserPassworder, error)) {
 	passwordHashers[alg] = factory
 }
 
-func NewUserPassworder(params map[string]string,
-	toRealDir func(context.Context, string) string) (UserPassworder, error) {
-	alg := params["users.password_hash_alg"]
+func NewUserPassworder(env *client.Environment) (UserPassworder, error) {
+	alg := env.Config.StringWithDefault("users.password_hash_alg", "")
 	if alg != "" && alg != "default" {
 		f, ok := passwordHashers[alg]
 		if !ok {
 			return nil, errors.New("用户密码加密算法 '" + alg + "' 不支持")
 		}
-		return f(params, toRealDir)
+		return f(env)
 	}
 
 	return &userPasswordHasher{

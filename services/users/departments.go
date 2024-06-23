@@ -14,19 +14,19 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-func NewDepartments(logger *slog.Logger,
-	params map[string]string,
+func NewDepartments(env *client.Environment,
 	db *gobatis.SessionFactory,
-	operationLogger OperationLogger,
-	toRealDir func(context.Context, string) string) (client.Departments, error) {
+	operationLogger OperationLogger) (client.Departments, error) {
 	return departmentService{
-		logger:          logger,
+		env:             env,
+		logger:          env.Logger.WithGroup("departments"),
 		operationLogger: operationLogger,
 		dao:             NewDepartmentDao(db.SessionReference()),
 	}, nil
 }
 
 type departmentService struct {
+	env             *client.Environment
 	logger          *slog.Logger
 	operationLogger OperationLogger
 	// db              *gobatis.SessionFactory

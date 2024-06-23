@@ -22,15 +22,13 @@ import (
 	good_password "github.com/mei-rune/go-good-password"
 )
 
-func NewUsers(logger *slog.Logger,
-	params map[string]string,
+func NewUsers(env *client.Environment,
 	db *gobatis.SessionFactory,
-	operationLogger OperationLogger,
-	toRealDir func(context.Context, string) string) (Users, error) {
-	enablePasswordCheck := client.ToBool(params["enable_password_check"])
+	operationLogger OperationLogger) (Users, error) {
+	enablePasswordCheck := env.Config.BoolWithDefault("enable_password_check", false)
 	var fields []CustomField
-	if s := params["usercustomfields"]; s != "" {
-		filename := toRealDir(context.Background(), s)
+	if s := env.Config.StringWithDefault("usercustomfields", ""); s != "" {
+		filename := client.GetRealDir(context.Background(), env, s)
 		bs, err := ioutil.ReadFile(filename)
 		if err != nil {
 			if !os.IsNotExist(err) {
@@ -47,17 +45,17 @@ func NewUsers(logger *slog.Logger,
 		fields = client.DefaultFields
 	}
 
-	passwordHasher, err := NewUserPassworder(params, toRealDir)
+	passwordHasher, err := NewUserPassworder(env)
 	if err != nil {
 		return nil, errors.Wrap(err, "加载用户的 Hasher 失败")
 	}
 
 	sess := db.SessionReference()
 	return userService{
-		logger:          logger,
+		env:             env,
+		logger:          env.Logger.WithGroup("users"),
 		operationLogger: operationLogger,
 		db:              db,
-		toRealDir:       toRealDir,
 
 		enablePasswordCheck: enablePasswordCheck,
 		users:               NewUserDao(sess),
@@ -68,6 +66,7 @@ func NewUsers(logger *slog.Logger,
 }
 
 type userService struct {
+	env             *client.Environment
 	logger          *slog.Logger
 	operationLogger OperationLogger
 	db              *gobatis.SessionFactory

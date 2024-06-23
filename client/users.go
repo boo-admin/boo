@@ -28,8 +28,7 @@ type User struct {
 	CreatedAt              time.Time              `json:"created_at,omitempty" xorm:"created_at created"`
 	UpdatedAt              time.Time              `json:"updated_at,omitempty" xorm:"updated_at updated"`
 
-	
-	Department   *Department              `json:"department,omitempty" xorm:"-"`
+	Department *Department `json:"department,omitempty" xorm:"-"`
 }
 
 func (u *User) GetPhone() string {

@@ -19,14 +19,12 @@ import (
 	"github.com/hjson/hjson-go/v4"
 )
 
-func NewEmployees(logger *slog.Logger,
-	params map[string]string,
+func NewEmployees(env *client.Environment,
 	db *gobatis.SessionFactory,
-	operationLogger OperationLogger,
-	toRealDir func(context.Context, string) string) (Employees, error) {
+	operationLogger OperationLogger) (Employees, error) {
 	var fields []CustomField
-	if s := params["employeecustomfields"]; s != "" {
-		filename := toRealDir(context.Background(), s)
+	if s := env.Config.StringWithDefault("employeecustomfields", ""); s != "" {
+		filename := client.GetRealDir(context.Background(), env, s)
 		bs, err := ioutil.ReadFile(filename)
 		if err != nil {
 			if !os.IsNotExist(err) {
@@ -45,18 +43,18 @@ func NewEmployees(logger *slog.Logger,
 
 	sess := db.SessionReference()
 	return employeeService{
-		logger:          logger,
+		env:             env,
+		logger:          env.Logger.WithGroup("employees"),
 		operationLogger: operationLogger,
 		db:              db,
-		toRealDir:       toRealDir,
-
-		employeeDao: NewEmployeeDao(sess),
-		departments: NewDepartmentDao(sess),
-		fields:      fields,
+		employeeDao:     NewEmployeeDao(sess),
+		departments:     NewDepartmentDao(sess),
+		fields:          fields,
 	}, nil
 }
 
 type employeeService struct {
+	env             *client.Environment
 	logger          *slog.Logger
 	operationLogger OperationLogger
 	db              *gobatis.SessionFactory

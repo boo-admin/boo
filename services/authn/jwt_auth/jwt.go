@@ -1,10 +1,11 @@
-package boojwt
+package jwt_auth
 
 import (
 	"context"
 	"net/http"
 	"strings"
 
+	"github.com/boo-admin/boo/client"
 	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/services/authn"
 	jwt "github.com/golang-jwt/jwt/v4"
@@ -21,37 +22,38 @@ type TokenCheckFunc func(ctx context.Context, req *http.Request, tokenStr string
 //  3. Cookie 'token' value
 //
 // example:
-//   TokenVerify([]TokenFindFunc{
-//       TokenFromQuery,
-//   }, []TokenCheckFunc{
-//       JWTCheckWithSetUser(NewJWTAuth(...), TokenToUser),
-//   })
-//   ......
 //
-//   func TokenToUser(ctx context.Context, req *http.Request, token *jwt.Token) (authn.User, error) {
-// 	    claims, ok := token.Claims.(*jwt.StandardClaims)
-// 	    if !ok {
-// 	    	return nil, errors.New("claims isnot jwt.StandardClaims")
-// 	    }
+//	  TokenVerify([]TokenFindFunc{
+//	      TokenFromQuery,
+//	  }, []TokenCheckFunc{
+//	      JWTCheckWithSetUser(NewJWTAuth(...), TokenToUser),
+//	  })
+//	  ......
 //
-// 	    ss := strings.SplitN(claims.Audience, " ", 2)
-// 	    if len(ss) < 2 {
-// 	    	return nil, errors.New("Audience '" + claims.Audience + "' is invalid")
-// 	    }
+//	  func TokenToUser(ctx context.Context, req *http.Request, token *jwt.Token) (authn.User, error) {
+//		    claims, ok := token.Claims.(*jwt.StandardClaims)
+//		    if !ok {
+//		    	return nil, errors.New("claims isnot jwt.StandardClaims")
+//		    }
 //
-// 	    userid, cerr := strconv.ParseInt(ss[0], 10, 64)
-// 	    if cerr != nil {
-// 	    	return nil, errors.New("Audience '" + claims.Audience + "' is invalid")
-// 	    }
-// 	    if userid == 0 {
-// 	    	if defaultUser == nil {
-// 			    return nil, errors.New("Audience '" + claims.Audience + "' is invalid, userid is missing")
-// 		    }
-// 		    username := ss[1]
-// 		    return warpTokenUser(defaultUser, username, token), nil
-// 	    }
-// 	    return usermanager.UserByID(ctx, userid)
-//    }
+//		    ss := strings.SplitN(claims.Audience, " ", 2)
+//		    if len(ss) < 2 {
+//		    	return nil, errors.New("Audience '" + claims.Audience + "' is invalid")
+//		    }
+//
+//		    userid, cerr := strconv.ParseInt(ss[0], 10, 64)
+//		    if cerr != nil {
+//		    	return nil, errors.New("Audience '" + claims.Audience + "' is invalid")
+//		    }
+//		    if userid == 0 {
+//		    	if defaultUser == nil {
+//				    return nil, errors.New("Audience '" + claims.Audience + "' is invalid, userid is missing")
+//			    }
+//			    username := ss[1]
+//			    return warpTokenUser(defaultUser, username, token), nil
+//		    }
+//		    return usermanager.UserByID(ctx, userid)
+//	   }
 func TokenVerify(findTokenFns []TokenFindFunc, checkTokenFns []TokenCheckFunc) authn.AuthValidateFunc {
 	return func(ctx context.Context, req *http.Request) (context.Context, error) {
 		var tokenStr string
@@ -87,7 +89,6 @@ func JWTCheckWithSetUser(ja *JWTAuth, readUser func(ctx context.Context, req *ht
 		})), nil
 	})
 }
-
 
 func JWTCheck(ja *JWTAuth, handle func(ctx context.Context, req *http.Request, token *jwt.Token) (context.Context, error)) TokenCheckFunc {
 	return func(ctx context.Context, req *http.Request, tokenStr string) (context.Context, error) {
@@ -203,4 +204,20 @@ func TokenFromHeader(r *http.Request) string {
 func TokenFromQuery(r *http.Request) string {
 	// Get token from query param named "token".
 	return r.URL.Query().Get("token")
+}
+
+func New(env *client.Environment, jwtUser func(ctx context.Context, req *http.Request, token *jwt.Token) (context.Context, error)) (authn.AuthValidateFunc, error) {
+	jwtAlg := env.Config.StringWithDefault("auth.jwt.alg", "")
+	jwtSignKey := env.Config.StringWithDefault("auth.jwt.sign_key", "")
+	jwtVerifyKey := env.Config.StringWithDefault("auth.jwt.verify_key", "")
+
+	jwtConfig := NewJWTAuth(jwtAlg, []byte(jwtSignKey), []byte(jwtVerifyKey))
+
+	return TokenVerify(
+		[]TokenFindFunc{
+			TokenFromQuery,
+		},
+		[]TokenCheckFunc{
+			JWTCheck(jwtConfig, jwtUser),
+		}), nil
 }

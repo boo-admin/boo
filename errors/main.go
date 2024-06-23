@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"net/http"
 	"io/fs"
+	"net/http"
 
 	xerrors "golang.org/x/exp/errors"
 	xfmt "golang.org/x/exp/errors/fmt"
@@ -15,17 +15,17 @@ import (
 // EncodeError 不支持 Is(error) 和 Unwarp()
 
 var (
-	ErrSkipped      error = fs.SkipAll
-	ErrNotFound           = sql.ErrNoRows
-	ErrUnauthorized       = errors.New("unauthorized")
-	ErrCacheInvalid       = errors.New("permission cache is invald")
-	ErrTagNotFound        = errors.New("permission tag is not found")
-	ErrPermissionNotFound = errors.New("permission is not found")
-	ErrPermissionDeny     = errors.New("permission deny")
-	ErrAlreadyClosed      = errors.New("server is closed")
-	ErrValueNull          = errors.New("value is null")
-	ErrExpectedType       = errors.New("Type unexpected")
-	ErrValidationError    = WithErrorCode(errors.New("validation error"), http.StatusBadRequest)
+	ErrSkipped            error = fs.SkipAll
+	ErrNotFound                 = sql.ErrNoRows
+	ErrUnauthorized             = errors.New("unauthorized")
+	ErrCacheInvalid             = errors.New("permission cache is invald")
+	ErrTagNotFound              = errors.New("permission tag is not found")
+	ErrPermissionNotFound       = errors.New("permission is not found")
+	ErrPermissionDeny           = errors.New("permission deny")
+	ErrAlreadyClosed            = errors.New("server is closed")
+	ErrValueNull                = errors.New("value is null")
+	ErrExpectedType             = errors.New("Type unexpected")
+	ErrValidationError          = WithErrorCode(errors.New("validation error"), http.StatusBadRequest)
 )
 
 type Wrapper = xerrors.Wrapper
@@ -158,7 +158,6 @@ func WithErrorCode(err error, code int) error {
 func WithHTTPCode(err error, code int) error {
 	return &withCode{err: err, code: code}
 }
-
 
 func TryGetErrorCode(target error) (int, bool) {
 	if target == nil {

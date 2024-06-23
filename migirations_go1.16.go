@@ -10,8 +10,8 @@ import (
 	"io/fs"
 	"strings"
 
-	"github.com/pressly/goose/v3"
 	"github.com/boo-admin/boo/errors"
+	"github.com/pressly/goose/v3"
 )
 
 //go:embed migrations/*/*.sql

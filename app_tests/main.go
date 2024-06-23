@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,15 +13,21 @@ import (
 
 	"github.com/boo-admin/boo"
 	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/engine/echofunctions"
 	"github.com/boo-admin/boo/engine/echosrv"
 	"github.com/boo-admin/boo/goutils/httpext"
+	"github.com/boo-admin/boo/services/authn"
+	"github.com/boo-admin/boo/services/authn/base_auth"
+	"github.com/boo-admin/boo/services/authn/jwt_auth"
+	"github.com/boo-admin/boo/services/authn/session_auth"
+	"github.com/golang-jwt/jwt/v4"
 	_ "github.com/lib/pq"
 	"golang.org/x/exp/slog"
 )
 
 type TestApp struct {
 	Logger     *slog.Logger
-	Params     map[string]string
+	Env        *client.Environment
 	CurrentDir string
 	Server     *boo.Server
 
@@ -33,8 +41,6 @@ func setDefault(params map[string]string, key, value string) {
 }
 
 func NewTestApp(t testing.TB, params map[string]string) *TestApp {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{}))
-	slog.SetDefault(logger)
 	currentDir, err := GetPackageRoot()
 	if err != nil {
 		t.Error("GetPackageRoot()", err)
@@ -43,12 +49,19 @@ func NewTestApp(t testing.TB, params map[string]string) *TestApp {
 	if params == nil {
 		params = map[string]string{}
 	}
+	setDefault(params, "log.filename", "console")
 	setDefault(params, "db.reset_db", "true")
 	setDefault(params, "db.drv", "postgres")
 	setDefault(params, "db.url", "host=127.0.0.1 port=5432 user=golang password=123456 dbname=golang sslmode=disable")
+
+	env, err := client.NewEnvironmentWith("boo", "test.properties", params)
+	if err != nil {
+		t.Error("NewEnvironmentWith()", err)
+		t.FailNow()
+	}
 	return &TestApp{
-		Logger:     logger,
-		Params:     params,
+		Logger:     env.Logger,
+		Env:        env,
 		CurrentDir: currentDir,
 	}
 }
@@ -58,20 +71,76 @@ func (app *TestApp) BaseURL() string {
 }
 
 func (app *TestApp) Start(t testing.TB) {
-	srv, err := boo.NewServer(app.Logger, app.Params, boo.ToRealDirWith(app.CurrentDir))
+	jwtUser := func(ctx context.Context, req *http.Request, token *jwt.Token) (context.Context, error) {
+		claims, ok := token.Claims.(*jwt.StandardClaims)
+		if !ok {
+			return nil, errors.New("claims not jwt.StandardClaims")
+		}
+
+		ss := strings.SplitN(claims.Audience, " ", 2)
+		if len(ss) < 2 {
+			return nil, errors.New("Audience '" + claims.Audience + "' is invalid")
+		}
+		// userid := ss[0]
+		username := ss[1]
+
+		return authn.ContextWithReadCurrentUser(ctx, authn.ReadCurrentUserFunc(func(ctx context.Context) (authn.AuthUser, error) {
+			return authn.NewMockUser(username), nil
+		})), nil
+	}
+	jwtAuth, err := jwt_auth.New(app.Env, jwtUser)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	sessionUser := func(ctx context.Context, req *http.Request, values url.Values) (context.Context, error) {
+		username := values.Get(session_auth.SESSION_USER_KEY)
+		return authn.ContextWithReadCurrentUser(ctx, authn.ReadCurrentUserFunc(func(ctx context.Context) (authn.AuthUser, error) {
+			return authn.NewMockUser(username), nil
+		})), nil
+	}
+	sessionAuth, err := session_auth.New(app.Env, sessionUser)
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	validator := func(ctx context.Context, req *http.Request, username string, password string) (context.Context, error) {
+		if username == "admin" && password == "admin" {
+			return authn.ContextWithReadCurrentUser(ctx, authn.ReadCurrentUserFunc(func(stdctx context.Context) (authn.AuthUser, error) {
+					return  authn.NewMockUser("admin"), nil
+				})), nil
+		}
+		return ctx, authn.ErrInvalidCredentials
+	}
+	baseAuth /* , err */ := base_auth.Verify(validator)
+	// if err != nil {
+	//	t.Error(err)
+	//	t.FailNow()
+	// }
+
+	var validateFns = []authn.AuthValidateFunc{
+		jwtAuth,
+		sessionAuth,
+		baseAuth,
+	}
+	echosrv.Use(echofunctions.HTTPAuth(nil, validateFns...))
+
+
+	srv, err := boo.NewServer(app.Env)
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
 	app.Server = srv
-	echosrv.Use(echosrv.TestAuth())
 
 	engine, err := echosrv.New(srv, "/boo/api/v1")
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
 	}
-
+	
 	runner := httpext.NewRunner(app.Logger, ":1323")
 	err = runner.Start(context.Background(), engine)
 	if err != nil {

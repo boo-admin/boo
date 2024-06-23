@@ -71,10 +71,9 @@ func (queryer operationQueryer) List(ctx context.Context, userid []int64, succes
 	return items, nil
 }
 
-func LoadOperationLogLocaleConfig(params map[string]string,
-	toRealDir func(context.Context, string) string) (map[string]OperationLogLocaleConfig, error) {
-	filename := toRealDir(context.Background(), "@conf/operation_logs.zh.json")
-	customFilename := toRealDir(context.Background(), "@data/conf/operation_logs.zh.json")
+func LoadOperationLogLocaleConfig(env *client.Environment) (map[string]OperationLogLocaleConfig, error) {
+	filename := env.Fs.FromConfig("operation_logs.zh.json")
+	customFilename := env.Fs.FromCustomConfig("operation_logs.zh.json")
 
 	var cfg map[string]OperationLogLocaleConfig
 	err := client.FromHjsonFile(filename, &cfg)
@@ -116,11 +115,10 @@ func LoadOperationLogLocaleConfig(params map[string]string,
 	return cfg, nil
 }
 
-func NewOperationQueryer(params map[string]string,
-	toRealDir func(context.Context, string) string,
+func NewOperationQueryer(env *client.Environment,
 	session gobatis.SqlSession,
 	findUsernameByID func(ctx context.Context, id int64) (string, error)) (client.OperationQueryer, error) {
-	names, err := LoadOperationLogLocaleConfig(params, toRealDir)
+	names, err := LoadOperationLogLocaleConfig(env)
 	if err != nil {
 		return nil, err
 	}
