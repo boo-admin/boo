@@ -126,16 +126,24 @@ func (env *Environment) IsMasterNode() bool {
 }
 
 // 访问 url, 注意它包括了协议，地址，端口，不包含根路径
-func (env *Environment) GetApiEndpoint() string {
+func (env *Environment) GetApiEndpoint() (s string) {
 	if env.IsMasterNode() {
-		return env.Config.StringWithDefault(CfgSystemMasterApiEndpoint, "")
+		s = env.Config.StringWithDefault(CfgSystemMasterApiEndpoint, "")
 	} else {
-		return env.Config.StringWithDefault(CfgSystemLocalApiEndpoint, "")
+		s = env.Config.StringWithDefault(CfgSystemLocalApiEndpoint, "")
 	}
+	if s == "" {
+		panic("CfgSystemMasterApiEndpoint missing")
+	}
+	return s
 }
 
-func (env *Environment) GetHomeEndpoint() string {
-	return env.Config.StringWithDefault(CfgSystemHomeEndpoint, "")
+func (env *Environment) GetHomeEndpoint() (s string) {
+	s = env.Config.StringWithDefault(CfgSystemHomeEndpoint, "")
+	if s == "" {
+		panic("GetHomeEndpoint missing")
+	}
+	return s
 }
 
 // 访问 url, 注意它包括了协议，地址，端口，以及根路径

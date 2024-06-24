@@ -182,6 +182,14 @@ func (self *Config) ForEachWithPrefix(prefix string, cb func(key string, value i
 	}
 }
 
+func (self *Config) ToMap() map[string]interface{} {
+	var values = map[string]interface{}{}
+	for k, v := range self.settings {
+		values[k] = v
+	}
+	return values
+}
+
 func NewConfig(settings map[string]interface{}) *Config {
 	return &Config{settings: settings}
 }
