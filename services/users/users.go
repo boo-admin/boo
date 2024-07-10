@@ -22,6 +22,15 @@ import (
 	good_password "github.com/mei-rune/go-good-password"
 )
 
+var  NewUserDaoHook func(ref gobatis.SqlSession) UserDao
+
+func newUserDao(ref gobatis.SqlSession) UserDao {
+	if NewUserDaoHook != nil {
+		return NewUserDaoHook(ref)
+	}
+	return NewUserDao(ref)
+}
+
 func NewUsers(env *client.Environment,
 	db *gobatis.SessionFactory,
 	operationLogger OperationLogger) (Users, error) {
@@ -58,8 +67,8 @@ func NewUsers(env *client.Environment,
 		db:              db,
 
 		enablePasswordCheck: enablePasswordCheck,
-		users:               NewUserDao(sess),
-		departments:         NewDepartmentDao(sess),
+		users:               newUserDao(sess),
+		departments:         newDepartmentDao(sess),
 		fields:              fields,
 		passwordHasher:      passwordHasher,
 	}, nil
@@ -407,10 +416,10 @@ func (svc userService) FindByName(ctx context.Context, name string) (*User, erro
 	user.Password = "******"
 	return user, nil
 }
-func (svc userService) Count(ctx context.Context, keyword string) (int64, error) {
-	return svc.users.Count(ctx, keyword)
+func (svc userService) Count(ctx context.Context, departmentID int64, keyword string) (int64, error) {
+	return svc.users.Count(ctx, departmentID, keyword)
 }
-func (svc userService) List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]User, error) {
+func (svc userService) List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]User, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -421,7 +430,7 @@ func (svc userService) List(ctx context.Context, keyword string, sort string, of
 		return nil, errors.NewOperationReject(authn.OpViewUser)
 	}
 
-	list, err := svc.users.List(ctx, keyword, sort, offset, limit)
+	list, err := svc.users.List(ctx, departmentID, keyword, sort, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +452,7 @@ func (svc userService) Export(ctx context.Context, format string, inline bool, w
 
 	return importer.WriteHTTP(ctx, "users", format, inline, writer,
 		importer.RecorderFunc(func(ctx context.Context) (importer.RecordIterator, []string, error) {
-			list, err := svc.users.List(ctx, "", "", 0, 0)
+			list, err := svc.users.List(ctx, 0, "", "", 0, 0)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -495,7 +504,9 @@ func (svc userService) Export(ctx context.Context, format string, inline bool, w
 					values = append(values, list[index].Nickname)
 					values = append(values, department.Name)
 					for _, f := range svc.fields {
-						values = append(values, list[index].GetString(f.ID))
+						if s := list[index].GetStringWithDefault(f.ID, ""); s != "" {
+							values = append(values, s)
+						}
 					}
 					values = append(values,
 						formatTime(list[index].CreatedAt),
@@ -547,6 +558,7 @@ func (svc userService) Import(ctx context.Context, request *http.Request) error 
 	}
 	defer closer.Close()
 
+	override := request.URL.Query().Get("override") == "true"
 	departmentAutoCreate := request.URL.Query().Get("department_auto_create") == "true"
 
 	return importer.Import(ctx, "", reader, func(ctx context.Context, lineNumber int) (importer.Row, error) {
@@ -617,7 +629,9 @@ func (svc userService) Import(ctx context.Context, request *http.Request) error 
 					return err
 				}
 				if old != nil {
-					if canUpdate {
+					if override {
+						err = errors.New("用户 '" + record.Name + "' 已存在")
+					} else if canUpdate {
 						password := record.Password
 						record.Password = ""
 

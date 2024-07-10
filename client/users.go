@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/boo-admin/boo/goutils/as"
 	"github.com/runner-mei/resty"
 	"golang.org/x/exp/slog"
 )
@@ -32,11 +33,11 @@ type User struct {
 }
 
 func (u *User) GetPhone() string {
-	return u.GetString(Phone.ID)
+	return u.getString(Phone.ID)
 }
 
 func (u *User) GetEmail() string {
-	return u.GetString(Email.ID)
+	return u.getString(Email.ID)
 }
 
 func (u *User) GetWhiteAddressList() []string {
@@ -77,7 +78,7 @@ func (u *User) GetWhiteAddressList() []string {
 	return nil
 }
 
-func (u *User) GetString(key string) string {
+func (u *User) getString(key string) string {
 	if u.Fields == nil {
 		return ""
 	}
@@ -87,6 +88,28 @@ func (u *User) GetString(key string) string {
 	}
 	s, _ := o.(string)
 	return s
+}
+
+func (u *User) GetStringWithDefault(key, defaultValue string) string {
+	if u.Fields == nil {
+		return defaultValue
+	}
+	o := u.Fields[key]
+	if o == nil {
+		return defaultValue
+	}
+	return as.StringWithDefault(o, defaultValue)
+}
+
+func (u *User) GetBoolWithDefault(key string, defaultValue bool) bool {
+	if u.Fields == nil {
+		return defaultValue
+	}
+	o := u.Fields[key]
+	if o == nil {
+		return defaultValue
+	}
+	return as.BoolWithDefault(o, defaultValue)
 }
 
 type Users interface {
@@ -149,15 +172,17 @@ type Users interface {
 	FindByName(ctx context.Context, name string) (*User, error)
 
 	// @Summary 按关键字查询用户数目，关键字可以是用户名，邮箱以及电话
-	// @Param   keyword            query string                       false     "搜索关键字"
+	// @Param   department_id      query int                          false        "部门"
+	// @Param   keyword            query string                       false        "搜索关键字"
 	// @Accept  json
 	// @Produce json
 	// @Router  /users/count [get]
 	// @Success 200 {int64} int64  "返回所有用户数目"
-	Count(ctx context.Context, keyword string) (int64, error)
+	Count(ctx context.Context, departmentID int64, keyword string) (int64, error)
 
 	// @Summary 按关键字查询用户，关键字可以是用户名，邮箱以及电话
-	// @Param   keyword            query string                       false     "搜索关键字"
+	// @Param   department_id      query int                          false        "部门"
+	// @Param   keyword            query string                       false        "搜索关键字"
 	// @Param   offset             query int                          false        "offset"
 	// @Param   limit              query int                          false        "limit"
 	// @Param   sort               query string                       false        "排序字段"
@@ -165,7 +190,7 @@ type Users interface {
 	// @Produce json
 	// @Router  /users [get]
 	// @Success 200 {array} User  "返回所有用户"
-	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]User, error)
+	List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]User, error)
 }
 
 func NewRemoteUsers(pxy *resty.Proxy) Users {
