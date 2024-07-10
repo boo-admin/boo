@@ -98,15 +98,17 @@ type Employees interface {
 	FindByName(ctx context.Context, name string) (*Employee, error)
 
 	// @Summary 按关键字查询用户数目，关键字可以是用户名，邮箱以及电话
-	// @Param   keyword            query string                       false     "搜索关键字"
+	// @Param   department_id      query int                          false        "部门"
+	// @Param   keyword            query string                       false        "搜索关键字"
 	// @Accept  json
 	// @Produce json
 	// @Router  /employees/count [get]
 	// @Success 200 {int64} int64  "返回所有用户数目"
-	Count(ctx context.Context, keyword string) (int64, error)
+	Count(ctx context.Context, departmentID int64, keyword string) (int64, error)
 
 	// @Summary 按关键字查询用户，关键字可以是用户名，邮箱以及电话
-	// @Param   keyword            query string                       false     "搜索关键字"
+	// @Param   department_id      query int                          false        "部门"
+	// @Param   keyword            query string                       false        "搜索关键字"
 	// @Param   offset             query int                          false        "offset"
 	// @Param   limit              query int                          false        "limit"
 	// @Param   sort               query string                       false        "排序字段"
@@ -114,7 +116,7 @@ type Employees interface {
 	// @Produce json
 	// @Router  /employees [get]
 	// @Success 200 {array} Employee  "返回所有用户"
-	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]Employee, error)
+	List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]Employee, error)
 }
 
 func NewRemoteEmployees(pxy *resty.Proxy) Employees {

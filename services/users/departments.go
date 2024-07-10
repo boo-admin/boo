@@ -14,6 +14,15 @@ import (
 	"golang.org/x/exp/slog"
 )
 
+var  NewDepartmentDaoHook func(ref gobatis.SqlSession) DepartmentDao
+
+func newDepartmentDao(ref gobatis.SqlSession) DepartmentDao {
+	if NewDepartmentDaoHook != nil {
+		return NewDepartmentDaoHook(ref)
+	}
+	return NewDepartmentDao(ref)
+}
+
 func NewDepartments(env *client.Environment,
 	db *gobatis.SessionFactory,
 	operationLogger OperationLogger) (client.Departments, error) {
@@ -21,7 +30,7 @@ func NewDepartments(env *client.Environment,
 		env:             env,
 		logger:          env.Logger.WithGroup("departments"),
 		operationLogger: operationLogger,
-		dao:             NewDepartmentDao(db.SessionReference()),
+		dao:             newDepartmentDao(db.SessionReference()),
 	}, nil
 }
 

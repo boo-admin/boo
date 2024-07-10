@@ -19,6 +19,16 @@ import (
 	"github.com/hjson/hjson-go/v4"
 )
 
+
+var  NewEmployeeDaoHook func(ref gobatis.SqlSession) EmployeeDao
+
+func newEmployeeDao(ref gobatis.SqlSession) EmployeeDao {
+	if NewEmployeeDaoHook != nil {
+		return NewEmployeeDaoHook(ref)
+	}
+	return NewEmployeeDao(ref)
+}
+
 func NewEmployees(env *client.Environment,
 	db *gobatis.SessionFactory,
 	operationLogger OperationLogger) (Employees, error) {
@@ -47,8 +57,8 @@ func NewEmployees(env *client.Environment,
 		logger:          env.Logger.WithGroup("employees"),
 		operationLogger: operationLogger,
 		db:              db,
-		employeeDao:     NewEmployeeDao(sess),
-		departments:     NewDepartmentDao(sess),
+		employeeDao:     newEmployeeDao(sess),
+		departments:     newDepartmentDao(sess),
 		fields:          fields,
 	}, nil
 }
@@ -277,10 +287,10 @@ func (svc employeeService) FindByName(ctx context.Context, name string) (*Employ
 
 	return svc.employeeDao.FindByName(ctx, name)
 }
-func (svc employeeService) Count(ctx context.Context, keyword string) (int64, error) {
-	return svc.employeeDao.Count(ctx, keyword)
+func (svc employeeService) Count(ctx context.Context, departmentID int64, keyword string) (int64, error) {
+	return svc.employeeDao.Count(ctx, departmentID, keyword)
 }
-func (svc employeeService) List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]Employee, error) {
+func (svc employeeService) List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]Employee, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -291,7 +301,7 @@ func (svc employeeService) List(ctx context.Context, keyword string, sort string
 		return nil, errors.NewOperationReject(authn.OpViewEmployee)
 	}
 
-	return svc.employeeDao.List(ctx, keyword, sort, offset, limit)
+	return svc.employeeDao.List(ctx, departmentID, keyword, sort, offset, limit)
 }
 
 func (svc employeeService) Export(ctx context.Context, format string, inline bool, writer http.ResponseWriter) error {
@@ -307,7 +317,7 @@ func (svc employeeService) Export(ctx context.Context, format string, inline boo
 
 	return importer.WriteHTTP(ctx, "employeeDao", format, inline, writer,
 		importer.RecorderFunc(func(ctx context.Context) (importer.RecordIterator, []string, error) {
-			list, err := svc.employeeDao.List(ctx, "", "", 0, 0)
+			list, err := svc.employeeDao.List(ctx, 0, "", "", 0, 0)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -404,6 +414,7 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 	}
 	defer closer.Close()
 
+	override := request.URL.Query().Get("override") == "true"
 	departmentAutoCreate := request.URL.Query().Get("department_auto_create") == "true"
 
 	return importer.Import(ctx, "", reader, func(ctx context.Context, lineNumber int) (importer.Row, error) {
@@ -442,7 +453,7 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 						return errors.Wrap(err, origin+" '"+value+"' 查询失败")
 					}
 
-					if !departmentAutoCreate {
+					if !departmentAutoCreate{
 						return errors.New(origin + " '" + value + "' 没有找到")
 					}
 					if !canCreateDepartment {
@@ -469,7 +480,9 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 					return err
 				}
 				if old != nil {
-					if canUpdate {
+					if override {
+						err = errors.New("员工 '" + record.Name + "' 已存在")
+					} else if canUpdate {
 						err = svc.update(ctx, currentUser, old.ID, record, old, true)
 					} else {
 						err = errors.New("没有更新员工的权限，员工 '" + record.Name + "' 没有更新")

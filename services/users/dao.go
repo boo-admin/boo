@@ -55,19 +55,43 @@ type UserDao interface {
 
 	FindByID(ctx context.Context, id int64) (*User, error)
 	FindByName(ctx context.Context, name string) (*User, error)
-	// @default SELECT count(*) from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
+	// @default SELECT count(*) from <tablename /> <where>
+	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
 	//   OR nickname like <like value="keyword" />
 	//   OR fields->>'<print value="constants.user_phone" />' like <like value="keyword" />
 	//   OR fields->>'<print value="constants.user_email" />' like <like value="keyword" /></if>
-	Count(ctx context.Context, keyword string) (int64, error)
-	// @default SELECT * from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
+	//   </where>
+	// @mysql SELECT count(*) from <tablename /> <where>
+	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="isNotEmpty(keyword)">
+	//   name like <like value="keyword" />
+	//   OR nickname like <like value="keyword" />
+	//   OR fields->>'$.<print value="constants.user_phone" />' like <like value="keyword" />
+	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
+	//   </where>
+	Count(ctx context.Context, departmentID int64, keyword string) (int64, error)
+	// @default SELECT * from <tablename /> <where>
+	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
 	//   OR nickname like <like value="keyword" />
 	//   OR fields->>'<print value="constants.user_phone" />' like <like value="keyword" />
-	//   OR fields->>'<print value="constants.user_email" />' like <like value="keyword" /></if>
+	//   OR fields->>'<print value="constants.user_email" />' like <like value="keyword" />
+	//   </if>
+	//   </where>
 	// <pagination /> <sort_by />
-	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]User, error)
+	// @mysql SELECT * from <tablename /> <where>
+	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="isNotEmpty(keyword)">
+	//   name like <like value="keyword" />
+	//   OR nickname like <like value="keyword" />
+	//   OR fields->>'$.<print value="constants.user_phone" />' like <like value="keyword" />
+	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
+	//   </where>
+	// <pagination /> <sort_by />
+	List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]User, error)
 	FindByIDList(ctx context.Context, id []int64) ([]User, error)
 }
 
@@ -123,19 +147,43 @@ type EmployeeDao interface {
 
 	FindByID(ctx context.Context, id int64) (*Employee, error)
 	FindByName(ctx context.Context, name string) (*Employee, error)
-	// @default SELECT count(*) from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
+	// @default SELECT count(*) from <tablename /> <where>
+	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
 	//   OR nickname like <like value="keyword" />
 	//   OR fields->>'<print value="constants.user_phone" />' like <like value="keyword" />
 	//   OR fields->>'<print value="constants.user_email" />' like <like value="keyword" /></if>
-	Count(ctx context.Context, keyword string) (int64, error)
-	// @default SELECT * from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
+	//   </where>
+	// @mysql SELECT count(*) from <tablename /> <where>
+	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="isNotEmpty(keyword)">
+	//   name like <like value="keyword" />
+	//   OR nickname like <like value="keyword" />
+	//   OR fields->>'$.<print value="constants.user_phone" />' like <like value="keyword" />
+	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
+	//   </where>
+	Count(ctx context.Context, departmentID int64, keyword string) (int64, error)
+	// @default SELECT * from <tablename /> <where>
+	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
 	//   OR nickname like <like value="keyword" />
 	//   OR fields->>'<print value="constants.user_phone" />' like <like value="keyword" />
-	//   OR fields->>'<print value="constants.user_email" />' like <like value="keyword" /></if>
+	//   OR fields->>'<print value="constants.user_email" />' like <like value="keyword" />
+	//   </if>
+	//   </where>
 	// <pagination /> <sort_by />
-	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]Employee, error)
+	// @mysql SELECT * from <tablename /> <where>
+	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="isNotEmpty(keyword)">
+	//   name like <like value="keyword" />
+	//   OR nickname like <like value="keyword" />
+	//   OR fields->>'$.<print value="constants.user_phone" />' like <like value="keyword" />
+	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
+	//   </where>
+	// <pagination /> <sort_by />
+	List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]Employee, error)
 	FindByIDList(ctx context.Context, id []int64) ([]Employee, error)
 }
 
