@@ -2,7 +2,12 @@ package authn
 
 import (
 	"context"
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
 	"fmt"
+	"hash"
 
 	"github.com/boo-admin/boo/errors"
 )
@@ -147,3 +152,20 @@ const (
 	OpDeleteEmployee = "deleteemployee"
 	OpViewEmployee   = "viewemployee"
 )
+
+func GetHash(alg string) (func() hash.Hash, error) {
+	switch alg {
+	case "":
+		return nil, nil
+	case "md5":
+		return md5.New, nil
+	case "sha1":
+		return sha1.New, nil
+	case "sha256":
+		return sha256.New, nil
+	case "sha512":
+		return sha512.New, nil
+	default:
+		return getOtherHash(alg)
+	}
+}
