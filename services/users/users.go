@@ -54,6 +54,8 @@ func NewUsers(env *client.Environment,
 		fields = client.DefaultFields
 	}
 
+	var defaultUsernames = env.Config.StringsWithDefault("users.default_names", nil)
+
 	passwordHasher, err := NewUserPassworder(env)
 	if err != nil {
 		return nil, errors.Wrap(err, "加载用户的 Hasher 失败")
@@ -65,6 +67,7 @@ func NewUsers(env *client.Environment,
 		logger:          env.Logger.WithGroup("users"),
 		operationLogger: operationLogger,
 		db:              db,
+		defaultUsernames: defaultUsernames,
 
 		enablePasswordCheck: enablePasswordCheck,
 		users:               newUserDao(sess),
@@ -79,7 +82,7 @@ type userService struct {
 	logger          *slog.Logger
 	operationLogger OperationLogger
 	db              *gobatis.SessionFactory
-	toRealDir       func(context.Context, string) string
+	defaultUsernames []string
 
 	enablePasswordCheck bool
 	users               UserDao
@@ -392,8 +395,18 @@ func (svc userService) FindByID(ctx context.Context, id int64) (*User, error) {
 		return nil, err
 	}
 
-	user.Password = "******"
+	svc.processUser(user)
 	return user, nil
+}
+func (svc userService) processUser(user *User) {
+	user.Password = "******"
+
+	for _, name := range svc.defaultUsernames {
+		if user.Name == name {
+			user.IsDefault = true
+			break
+		}
+	}
 }
 func (svc userService) FindByName(ctx context.Context, name string) (*User, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
@@ -413,7 +426,7 @@ func (svc userService) FindByName(ctx context.Context, name string) (*User, erro
 		return nil, err
 	}
 
-	user.Password = "******"
+	svc.processUser(user)
 	return user, nil
 }
 func (svc userService) Count(ctx context.Context, departmentID int64, keyword string) (int64, error) {
@@ -435,7 +448,7 @@ func (svc userService) List(ctx context.Context, departmentID int64, keyword str
 		return nil, err
 	}
 	for idx := range list {
-		list[idx].Password = "******"
+		svc.processUser(&list[idx])
 	}
 	return list, nil
 }
@@ -551,7 +564,7 @@ func (svc userService) Import(ctx context.Context, request *http.Request) error 
 		canCreateDepartment = ok
 	}
 
-	ctx = context.WithValue(ctx, importer.ContextToRealDirKey, svc.toRealDir)
+	ctx = context.WithValue(ctx, importer.ContextToRealDirKey, client.ToRealDirFunc(svc.env))
 	reader, closer, err := importer.ReadHTTP(ctx, request)
 	if err != nil {
 		return err
