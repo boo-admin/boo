@@ -19,6 +19,7 @@ type Server struct {
 	OperationQueryer client.OperationQueryer
 	Departments      client.Departments
 	Users            users.Users
+	Roles            client.Roles
 	Employees        users.Employees
 }
 
@@ -65,6 +66,12 @@ func NewServer(env *client.Environment) (*Server, error) {
 		return nil, err
 	}
 	srv.Users = usvc
+
+	rsvc, err := users.NewRoles(env, dbFactory, srv.OperationLogger)
+	if err != nil {
+		return nil, err
+	}
+	srv.Roles = rsvc
 
 	employeeSvc, err := users.NewEmployees(env, dbFactory, srv.OperationLogger)
 	if err != nil {

@@ -13,6 +13,7 @@ import (
 type TimeRange = client.TimeRange
 type Department = client.Department
 type User = client.User
+type Role = client.Role
 type Employee = client.Employee
 type OperationLog = client.OperationLog
 type OperationLogLocaleConfig = client.OperationLogLocaleConfig

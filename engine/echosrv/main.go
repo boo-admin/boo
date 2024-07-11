@@ -79,6 +79,7 @@ func New(srv *boo.Server, prefix string) (*echo.Echo, error) {
 	client.InitDepartments(mux, srv.Departments)
 	client.InitUsers(mux, srv.Users)
 	users.InitUsersForHTTP(mux, srv.Users)
+	client.InitRoles(mux, srv.Roles)
 	client.InitEmployees(mux, srv.Employees)
 	users.InitEmployeesForHTTP(mux, srv.Employees)
 

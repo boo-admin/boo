@@ -128,6 +128,31 @@ type UserProfile struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty" xorm:"updated_at updated"`
 }
 
+
+
+// @gobatis.namespace boo
+type RoleDao interface {
+	// @type select
+	// @postgres SELECT true FROM <tablename type="Role" /> WHERE lower(name) = lower(#{name})  LIMIT 1
+	// @default SELECT 1 FROM <tablename type="Role" /> WHERE lower(name) = lower(#{name})  LIMIT 1
+	NameExists(ctx context.Context, name string) (bool, error)
+
+	Insert(ctx context.Context, role *Role) (int64, error)
+	UpdateByID(ctx context.Context, id int64, role *Role) error
+	DeleteByID(ctx context.Context, id int64) error
+	FindByID(ctx context.Context, id int64) (*Role, error)
+	FindByName(ctx context.Context, name string) (*Role, error)
+	// @default SELECT count(*) from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
+	//   name like <like value="keyword" /> or uuid like <like value="keyword" /> </if>
+	Count(ctx context.Context, keyword string) (int64, error)
+	// @default SELECT * from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
+	//   name like <like value="keyword" /> or uuid like <like value="keyword" /> </if>
+	// <pagination /> <sort_by />
+	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]Role, error)
+
+	FindByIDList(ctx context.Context, id []int64) ([]Role, error)
+}
+
 // @gobatis.namespace boo
 type EmployeeDao interface {
 	// @type select
