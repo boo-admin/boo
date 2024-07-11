@@ -14,7 +14,6 @@ import (
 
 	"github.com/boo-admin/boo/goutils/as"
 	"github.com/mei-rune/properties"
-	"github.com/runner-mei/log"
 	"golang.org/x/exp/slog"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -225,8 +224,8 @@ func NewEnvironmentWith(namespace, filename string, defaultValues map[string]str
 	}
 	if logger.Enabled(nil, slog.LevelDebug) {
 		logger.Debug("load config successful",
-			log.Any("existnames", existfilenames),
-			log.Any("nonexistnames", nonexistfilenames))
+			slog.Any("existnames", existfilenames),
+			slog.Any("nonexistnames", nonexistfilenames))
 	}
 
 	env := NewEnvironment(namespace, cfg, fs, logger)

@@ -190,18 +190,5 @@ func GetValuesWithSkipVerifyIfEmpty(req *http.Request, sessionKey string, h func
 }
 
 func GetHash(alg string) (func() hash.Hash, error) {
-	switch alg {
-	case "":
-		return nil, nil
-	case "md5":
-		return md5.New, nil
-	case "sha1":
-		return sha1.New, nil
-	case "sha256":
-		return sha256.New, nil
-	case "sha512":
-		return sha512.New, nil
-	default:
-		return getOtherHash(alg)
-	}
+	return GetHash(alg)
 }
