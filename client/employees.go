@@ -27,6 +27,46 @@ type Employee struct {
 	Department *Department `json:"department,omitempty" xorm:"-"`
 }
 
+func (u *Employee) ToUser() *User {
+	fields := map[string]interface{}{}
+	for key, value := range u.Fields {
+		fields[key] = value
+	}
+
+	return &User{
+		DepartmentID: u.DepartmentID,
+		Name: u.Name,
+		Nickname: u.Nickname,
+		Description: u.Description,
+		Source: u.Source,
+		Fields: fields,
+		CreatedAt: u.CreatedAt,
+		UpdatedAt: u.UpdatedAt,
+		Department: u.Department,
+	}
+}
+
+func (u *Employee) From(user *User) {
+	if len(user.Fields) > 0 {
+		if u.Fields == nil {
+			u.Fields = map[string]interface{}{}
+		}
+		for key, value := range user.Fields {
+			u.Fields[key] = value
+		}
+	}
+
+	u.DepartmentID = user.DepartmentID
+	u.Name= user.Name
+	u.Nickname= user.Nickname
+	u.Description= user.Description
+	u.Source= user.Source
+	u.CreatedAt= user.CreatedAt
+	u.UpdatedAt= user.UpdatedAt
+	u.Department= user.Department
+}
+
+
 func (u *Employee) GetPhone() string {
 	return u.GetString(Phone.ID)
 }
@@ -45,6 +85,17 @@ func (u *Employee) GetString(key string) string {
 	}
 	s, _ := o.(string)
 	return s
+}
+
+type UserEmployeeDiff struct {
+	UserID int64   `json:"user_id" xorm:"user_id null"`
+	EmployeeID int64 `json:"employee_id" xorm:"employee_id null"`
+
+	UserNickname  string `json:"user_nickname" xorm:"user_nickname null"`
+	EmployeeNickname  string `json:"employee_nickname"  xorm:"employee_nickname null"`
+
+	UserDepartmentID  int64 `json:"user_department_id" xorm:"user_department_id null"`
+	EmployeeDepartmentID  int64 `json:"employee_department_id" xorm:"employee_department_id null"`
 }
 
 type Employees interface {
@@ -117,6 +168,32 @@ type Employees interface {
 	// @Router  /employees [get]
 	// @Success 200 {array} Employee  "返回所有用户"
 	List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]Employee, error)
+
+	// @Summary  新建一个可登录用户
+	// @Param    id          path int     true     "用户ID"
+	// @Param    password    body int     true     "用户信息"
+	// @Accept   json
+	// @Produce  json
+	// @Router   /employees/{id}/users [post]
+	// @Success  200 {string} string  "返回一个新建用户的 id"
+	PushToUser(ctx context.Context, id int64, password string) (int64, error)
+
+	// @Summary  同用户和可登录用户的数据
+	// @Param    from_users            body []int64     true     "需要将从可登录用户同步到用户的列表"
+	// @Param    to_users              body []int64     true     "需要将从用户同步到可登录用户的列表"
+	// @Param    create_if_not_exist   body bool        true     "员工不存在时创建它"
+	// @Accept   json
+	// @Produce  json
+	// @Router   /employees/users/sync [post]
+	// @Success  200 {array} UserEmployeeDiff  "返回用户和可登录用户之间的差异"
+	SyncWithUsers(ctx context.Context, fromUsers []int64, toUsers []int64, createIfNotExist bool)  error
+
+	// @Summary  获取用户和可登录用户之间的差异列表
+	// @Accept   json
+	// @Produce  json
+	// @Router   /employees/users/diff [post]
+	// @Success  200 {array} UserEmployeeDiff  "返回用户和可登录用户之间的差异"
+	GetUserEmployeeDiff(ctx context.Context) ([]UserEmployeeDiff, error)
 }
 
 func NewRemoteEmployees(pxy *resty.Proxy) Employees {

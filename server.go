@@ -73,7 +73,7 @@ func NewServer(env *client.Environment) (*Server, error) {
 	}
 	srv.Roles = rsvc
 
-	employeeSvc, err := users.NewEmployees(env, dbFactory, srv.OperationLogger)
+	employeeSvc, err := users.NewEmployees(env, dbFactory, usvc, srv.OperationLogger)
 	if err != nil {
 		return nil, err
 	}

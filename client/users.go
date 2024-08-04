@@ -6,9 +6,13 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"net/http"
 	"strings"
 	"time"
+	"fmt"
 
+	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/goutils/as"
 	"github.com/runner-mei/resty"
 	"golang.org/x/exp/slog"
@@ -29,7 +33,7 @@ type User struct {
 	CreatedAt              time.Time              `json:"created_at,omitempty" xorm:"created_at created"`
 	UpdatedAt              time.Time              `json:"updated_at,omitempty" xorm:"updated_at updated"`
 
-	IsDefault             bool  `json:"is_default" xorm:"-"`
+	IsDefault bool `json:"is_default" xorm:"-"`
 
 	Department *Department `json:"department,omitempty" xorm:"-"`
 }
@@ -202,5 +206,34 @@ func NewRemoteUsers(pxy *resty.Proxy) Users {
 }
 
 func NewResty(baseURL string) (*resty.Proxy, error) {
-	return resty.New(baseURL)
+	pxy, err := resty.New(baseURL)
+	if err != nil {
+		return nil, err
+	}
+	pxy = pxy.SetContentType(resty.MIMEApplicationJSONCharsetUTF8)
+	pxy = pxy.ErrorFunc(errorFunc)
+	return pxy, nil
+}
+
+func errorFunc(ctx context.Context, req *http.Request, resp *http.Response) resty.HTTPError {
+	cached := resty.DefaultPool.Get()
+	defer resty.DefaultPool.Put(cached)
+
+	var err errors.EncodeError
+	decoder := json.NewDecoder(io.TeeReader(resp.Body, cached))
+	decoder.UseNumber()
+	e := decoder.Decode(&err)
+	if e != nil {
+		return errors.WithHTTPCode(errors.Wrap(e, "request '"+req.Method+"' is ok and unmarshal response fail\r\n"+
+			cached.String()), resty.ErrUnmarshalResponseFailCode())
+	}
+	if err.Message == "" {
+		return errors.WithHTTPCode(errors.New("request '"+req.Method+"' is ok and unmarshal response fail\r\n"+
+			cached.String()), resty.ErrUnmarshalResponseFailCode())
+	}
+	if err.Code == 0 {
+		err.Code = resp.StatusCode
+	}
+	fmt.Println(cached.String())
+	return &err
 }

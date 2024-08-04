@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/boo-admin/boo/services/authn"
 )
 
 var ErrCookieNotFound = errors.New("session cookie isn't found")
@@ -186,5 +188,5 @@ func GetValuesWithSkipVerifyIfEmpty(req *http.Request, sessionKey string, h func
 }
 
 func GetHash(alg string) (func() hash.Hash, error) {
-	return GetHash(alg)
+	return authn.GetHash(alg)
 }

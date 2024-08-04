@@ -9,6 +9,7 @@ import (
 	"embed"
 	"io/fs"
 	"strings"
+	"fmt"
 
 	"github.com/boo-admin/boo/errors"
 	"github.com/pressly/goose/v3"
@@ -38,6 +39,8 @@ func RunMigrations(ctx context.Context, driverName string, db *sql.DB, reset boo
 				return err
 			}
 		}
+	} else {
+		fmt.Println("reset skip")
 	}
 
 	if err := goose.UpContext(ctx, db, driverName); err != nil {

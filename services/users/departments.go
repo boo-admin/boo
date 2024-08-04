@@ -14,7 +14,7 @@ import (
 	"golang.org/x/exp/slog"
 )
 
-var  NewDepartmentDaoHook func(ref gobatis.SqlSession) DepartmentDao
+var NewDepartmentDaoHook func(ref gobatis.SqlSession) DepartmentDao
 
 func newDepartmentDao(ref gobatis.SqlSession) DepartmentDao {
 	if NewDepartmentDaoHook != nil {

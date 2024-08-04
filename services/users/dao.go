@@ -128,8 +128,6 @@ type UserProfile struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty" xorm:"updated_at updated"`
 }
 
-
-
 // @gobatis.namespace boo
 type RoleDao interface {
 	// @type select
@@ -169,6 +167,8 @@ type EmployeeDao interface {
 	UpdateByID(ctx context.Context, id int64, u *Employee) error
 	DeleteByID(ctx context.Context, id int64) error
 	DeleteByIDList(ctx context.Context, id []int64) error
+
+	FindByUserID(ctx context.Context, userid int64) (*Employee, error)
 
 	FindByID(ctx context.Context, id int64) (*Employee, error)
 	FindByName(ctx context.Context, name string) (*Employee, error)
@@ -210,6 +210,10 @@ type EmployeeDao interface {
 	// <pagination /> <sort_by />
 	List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]Employee, error)
 	FindByIDList(ctx context.Context, id []int64) ([]Employee, error)
+
+	// @default SELECT u.id as user_id, emp.id as employee_id, u.nickname as user_nickname, emp.nickname as employee_nickname, u.department_id as user_department_id, emp.department_id as employee_department_id
+	// FROM <tablename type="User" alias="u" /> INNER JOIN  <tablename type="Employee" alias="emp" /> ON u.id == emp.user_id
+	GetUserEmployeeDiff(ctx context.Context) ([]client.UserEmployeeDiff, error)
 }
 
 func init() {

@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/boo-admin/boo"
 	"github.com/boo-admin/boo/client"
@@ -22,6 +23,7 @@ import (
 	"github.com/boo-admin/boo/services/authn/session_auth"
 	"github.com/golang-jwt/jwt/v4"
 	_ "github.com/lib/pq"
+	gobatis "github.com/runner-mei/GoBatis"
 	"golang.org/x/exp/slog"
 )
 
@@ -32,6 +34,20 @@ type TestApp struct {
 	Server     *boo.Server
 
 	runner *httpext.Runner
+}
+
+func (a *TestApp) DbNow() time.Time {
+	sqlstr := "select now()"
+	if dialect := a.Server.Factory.Dialect(); dialect == gobatis.DM || dialect == gobatis.Oracle {
+		sqlstr = "select now() from dual"
+	}
+	var dbnow time.Time
+	err := a.Server.Factory.DB().QueryRowContext(context.Background(), sqlstr).Scan(&dbnow)
+	if err != nil {
+		panic(err)
+	}
+
+	return dbnow
 }
 
 func setDefault(params map[string]string, key, value string) {
@@ -109,8 +125,8 @@ func (app *TestApp) Start(t testing.TB) {
 	validator := func(ctx context.Context, req *http.Request, username string, password string) (context.Context, error) {
 		if username == "admin" && password == "admin" {
 			return authn.ContextWithReadCurrentUser(ctx, authn.ReadCurrentUserFunc(func(stdctx context.Context) (authn.AuthUser, error) {
-					return  authn.NewMockUser("admin"), nil
-				})), nil
+				return authn.NewMockUser("admin"), nil
+			})), nil
 		}
 		return ctx, authn.ErrInvalidCredentials
 	}
@@ -127,7 +143,6 @@ func (app *TestApp) Start(t testing.TB) {
 	}
 	echosrv.Use(echofunctions.HTTPAuth(nil, validateFns...))
 
-
 	srv, err := boo.NewServer(app.Env)
 	if err != nil {
 		t.Error(err)
@@ -140,7 +155,7 @@ func (app *TestApp) Start(t testing.TB) {
 		t.Error(err)
 		t.FailNow()
 	}
-	
+
 	runner := httpext.NewRunner(app.Logger, ":1323")
 	err = runner.Start(context.Background(), engine)
 	if err != nil {

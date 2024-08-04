@@ -22,7 +22,7 @@ import (
 	good_password "github.com/mei-rune/go-good-password"
 )
 
-var  NewUserDaoHook func(ref gobatis.SqlSession) UserDao
+var NewUserDaoHook func(ref gobatis.SqlSession) UserDao
 
 func newUserDao(ref gobatis.SqlSession) UserDao {
 	if NewUserDaoHook != nil {
@@ -33,7 +33,7 @@ func newUserDao(ref gobatis.SqlSession) UserDao {
 
 func NewUsers(env *client.Environment,
 	db *gobatis.SessionFactory,
-	operationLogger OperationLogger) (Users, error) {
+	operationLogger OperationLogger) (*UserService, error) {
 	enablePasswordCheck := env.Config.BoolWithDefault("enable_password_check", false)
 	var fields []CustomField
 	if s := env.Config.StringWithDefault("usercustomfields", ""); s != "" {
@@ -62,11 +62,11 @@ func NewUsers(env *client.Environment,
 	}
 
 	sess := db.SessionReference()
-	return userService{
-		env:             env,
-		logger:          env.Logger.WithGroup("users"),
-		operationLogger: operationLogger,
-		db:              db,
+	return &UserService{
+		env:              env,
+		logger:           env.Logger.WithGroup("users"),
+		operationLogger:  operationLogger,
+		db:               db,
 		defaultUsernames: defaultUsernames,
 
 		enablePasswordCheck: enablePasswordCheck,
@@ -77,11 +77,11 @@ func NewUsers(env *client.Environment,
 	}, nil
 }
 
-type userService struct {
-	env             *client.Environment
-	logger          *slog.Logger
-	operationLogger OperationLogger
-	db              *gobatis.SessionFactory
+type UserService struct {
+	env              *client.Environment
+	logger           *slog.Logger
+	operationLogger  OperationLogger
+	db               *gobatis.SessionFactory
 	defaultUsernames []string
 
 	enablePasswordCheck bool
@@ -91,7 +91,7 @@ type userService struct {
 	passwordHasher      UserPasswordHasher
 }
 
-func (svc userService) ValidatePassword(usernames []string, password string) error {
+func (svc UserService) ValidatePassword(usernames []string, password string) error {
 	if svc.enablePasswordCheck {
 		score, _ := good_password.Check(password, usernames)
 		if score < 3 {
@@ -107,7 +107,7 @@ func (svc userService) ValidatePassword(usernames []string, password string) err
 	return nil
 }
 
-func (svc userService) ValidateUser(v *validation.Validation, user *User) bool {
+func (svc UserService) ValidateUser(v *validation.Validation, user *User) bool {
 	v.Required("name", user.Name)
 	v.Required("nickname", user.Nickname)
 	if user.Source != "ldap" && user.Source != "cas" && user.Source != "oauth" {
@@ -137,7 +137,7 @@ func (svc userService) ValidateUser(v *validation.Validation, user *User) bool {
 	return v.HasErrors()
 }
 
-func (svc userService) Create(ctx context.Context, user *User) (int64, error) {
+func (svc UserService) Create(ctx context.Context, user *User) (int64, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return 0, err
@@ -147,10 +147,10 @@ func (svc userService) Create(ctx context.Context, user *User) (int64, error) {
 	} else if !ok {
 		return 0, errors.NewOperationReject(authn.OpCreateUser)
 	}
-	return svc.insert(ctx, currentUser, user, false)
+	return svc.insert(ctx, currentUser, user, actionNormal)
 }
 
-func (svc userService) insert(ctx context.Context, currentUser authn.AuthUser, user *User, importUser bool) (int64, error) {
+func (svc UserService) insert(ctx context.Context, currentUser authn.AuthUser, user *User, importUser int) (int64, error) {
 	v := validation.Default.New()
 	if exists, err := svc.users.UsernameExists(ctx, user.Name); err != nil {
 		return 0, errors.Wrap(err, "查询用户名 '"+user.Name+"' 是否已存在失败")
@@ -185,7 +185,7 @@ func (svc userService) insert(ctx context.Context, currentUser authn.AuthUser, u
 	})
 	return id, err
 }
-func (svc userService) UpdateByID(ctx context.Context, id int64, user *User) error {
+func (svc UserService) UpdateByID(ctx context.Context, id int64, user *User) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -199,10 +199,10 @@ func (svc userService) UpdateByID(ctx context.Context, id int64, user *User) err
 	if err != nil {
 		return errors.Wrap(err, "更新用户 '"+strconv.FormatInt(id, 10)+"' 失败")
 	}
-	return svc.update(ctx, currentUser, id, user, old, false)
+	return svc.update(ctx, currentUser, id, user, old, actionNormal)
 }
 
-func (svc userService) update(ctx context.Context, currentUser authn.AuthUser, id int64, user, old *User, importUser bool) error {
+func (svc UserService) update(ctx context.Context, currentUser authn.AuthUser, id int64, user, old *User, importUser int) error {
 	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
 		if old.Name != user.Name {
 			return errors.New("更新用户失败，用户名不可修改")
@@ -228,7 +228,7 @@ func (svc userService) update(ctx context.Context, currentUser authn.AuthUser, i
 		if user.Nickname != "" {
 			newUser.Nickname = user.Nickname
 		}
-		if importUser {
+		if importUser == actionImport {
 			if user.Description != "" {
 				newUser.Description = user.Description
 			}
@@ -276,7 +276,7 @@ func (svc userService) update(ctx context.Context, currentUser authn.AuthUser, i
 		return nil
 	})
 }
-func (svc userService) ChangePassword(ctx context.Context, id int64, password string) error {
+func (svc UserService) ChangePassword(ctx context.Context, id int64, password string) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -301,7 +301,7 @@ func (svc userService) ChangePassword(ctx context.Context, id int64, password st
 	return svc.resetPassword(ctx, currentUser, id, names, password, false)
 }
 
-func (svc userService) resetPassword(ctx context.Context, currentUser authn.AuthUser, id int64, names []string, password string, importUser bool) error {
+func (svc UserService) resetPassword(ctx context.Context, currentUser authn.AuthUser, id int64, names []string, password string, importUser bool) error {
 	if err := svc.ValidatePassword(names, password); err != nil {
 		return err
 	}
@@ -320,7 +320,7 @@ func (svc userService) resetPassword(ctx context.Context, currentUser authn.Auth
 	return nil
 }
 
-func (svc userService) DeleteByID(ctx context.Context, id int64) error {
+func (svc UserService) DeleteByID(ctx context.Context, id int64) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -345,7 +345,7 @@ func (svc userService) DeleteByID(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (svc userService) DeleteBatch(ctx context.Context, idlist []int64) error {
+func (svc UserService) DeleteBatch(ctx context.Context, idlist []int64) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -377,7 +377,7 @@ func (svc userService) DeleteBatch(ctx context.Context, idlist []int64) error {
 	})
 }
 
-func (svc userService) FindByID(ctx context.Context, id int64) (*User, error) {
+func (svc UserService) FindByID(ctx context.Context, id int64) (*User, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -398,7 +398,7 @@ func (svc userService) FindByID(ctx context.Context, id int64) (*User, error) {
 	svc.processUser(user)
 	return user, nil
 }
-func (svc userService) processUser(user *User) {
+func (svc UserService) processUser(user *User) {
 	user.Password = "******"
 
 	for _, name := range svc.defaultUsernames {
@@ -408,7 +408,7 @@ func (svc userService) processUser(user *User) {
 		}
 	}
 }
-func (svc userService) FindByName(ctx context.Context, name string) (*User, error) {
+func (svc UserService) FindByName(ctx context.Context, name string) (*User, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -429,10 +429,10 @@ func (svc userService) FindByName(ctx context.Context, name string) (*User, erro
 	svc.processUser(user)
 	return user, nil
 }
-func (svc userService) Count(ctx context.Context, departmentID int64, keyword string) (int64, error) {
+func (svc UserService) Count(ctx context.Context, departmentID int64, keyword string) (int64, error) {
 	return svc.users.Count(ctx, departmentID, keyword)
 }
-func (svc userService) List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]User, error) {
+func (svc UserService) List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]User, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -452,7 +452,7 @@ func (svc userService) List(ctx context.Context, departmentID int64, keyword str
 	}
 	return list, nil
 }
-func (svc userService) Export(ctx context.Context, format string, inline bool, writer http.ResponseWriter) error {
+func (svc UserService) Export(ctx context.Context, format string, inline bool, writer http.ResponseWriter) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -530,7 +530,7 @@ func (svc userService) Export(ctx context.Context, format string, inline bool, w
 		}))
 }
 
-func (svc userService) Import(ctx context.Context, request *http.Request) error {
+func (svc UserService) Import(ctx context.Context, request *http.Request) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -651,7 +651,7 @@ func (svc userService) Import(ctx context.Context, request *http.Request) error 
 						if !canResetPassword && password != "" && !isAllStar(password) {
 							err = errors.New("没有重置用户密码的权限，用户 '" + record.Name + "' 没有更新")
 						} else {
-							err = svc.update(ctx, currentUser, old.ID, record, old, true)
+							err = svc.update(ctx, currentUser, old.ID, record, old, actionImport)
 							if err == nil {
 								if password != "" && !isAllStar(password) {
 									names := []string{record.Name, record.Nickname}
@@ -670,7 +670,7 @@ func (svc userService) Import(ctx context.Context, request *http.Request) error 
 						if record.Nickname == "" {
 							record.Nickname = record.Name
 						}
-						_, err = svc.insert(ctx, currentUser, record, true)
+						_, err = svc.insert(ctx, currentUser, record, actionImport)
 					} else {
 						err = errors.New("没有新建用户的权限，用户 '" + record.Name + "' 没有创建")
 					}
@@ -681,7 +681,13 @@ func (svc userService) Import(ctx context.Context, request *http.Request) error 
 	})
 }
 
-func (svc userService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, user *User, importUser bool) {
+const (
+	actionNormal = iota
+	actionSync
+	actionImport
+)
+
+func (svc UserService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, user *User, importUser int) {
 	if !enableOplog {
 		return
 	}
@@ -727,10 +733,16 @@ func (svc userService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUse
 
 	typeStr := authn.OpCreateUser
 	content := "创建用户成功"
-	if importUser {
-		typeStr = "importuser"
+	switch importUser {
+	case actionNormal:
+	case actionSync:
+		typeStr = "synccreateuser"
+		content = "同步用户成功"
+	case actionImport:
+		typeStr = "importcreateuser"
 		content = "导入用户成功"
 	}
+
 	err := svc.operationLogger.WithTx(tx.DB()).LogRecord(ctx, &OperationLog{
 		UserID:     currentUser.ID(),
 		Username:   currentUser.Nickname(),
@@ -748,7 +760,7 @@ func (svc userService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUse
 	}
 }
 
-func (svc userService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, user, old *User, importUser bool) {
+func (svc UserService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, user, old *User, importUser int) {
 	if !enableOplog {
 		return
 	}
@@ -834,15 +846,22 @@ func (svc userService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUse
 	}
 
 	typeStr := authn.OpUpdateUser
-	if importUser {
-		typeStr = "importuser"
+	content := "更新用户成功"
+	switch importUser {
+	case actionNormal:
+	case actionSync:
+		typeStr = "syncupdateuser"
+		content = "同步更新用户成功"
+	case actionImport:
+		typeStr = "importupdateuser"
+		content = "导入更新用户成功"
 	}
 	err := svc.operationLogger.WithTx(tx.DB()).LogRecord(ctx, &OperationLog{
 		UserID:     currentUser.ID(),
 		Username:   currentUser.Nickname(),
 		Successful: true,
 		Type:       typeStr,
-		Content:    "更新用户成功",
+		Content:    content,
 		Fields: &OperationLogRecord{
 			ObjectType: "user",
 			ObjectID:   id,
@@ -854,7 +873,7 @@ func (svc userService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUse
 	}
 }
 
-func (svc userService) logResetPassword(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, username string, importUser bool) {
+func (svc UserService) logResetPassword(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, username string, importUser bool) {
 	if !enableOplog {
 		return
 	}
@@ -882,7 +901,7 @@ func (svc userService) logResetPassword(ctx context.Context, tx *gobatis.Tx, cur
 	}
 }
 
-func (svc userService) logDelete(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, oldUser *User) {
+func (svc UserService) logDelete(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, oldUser *User) {
 	if !enableOplog {
 		return
 	}

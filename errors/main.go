@@ -149,13 +149,13 @@ func (w *withKeyValue) Error() string {
 	return w.err.Error()
 }
 
-func WithCode(err error, code int) error {
+func WithCode(err error, code int) *withCode {
 	return &withCode{err: err, code: code}
 }
-func WithErrorCode(err error, code int) error {
+func WithErrorCode(err error, code int) *withCode {
 	return &withCode{err: err, code: code}
 }
-func WithHTTPCode(err error, code int) error {
+func WithHTTPCode(err error, code int) *withCode {
 	return &withCode{err: err, code: code}
 }
 

@@ -19,8 +19,7 @@ import (
 	"github.com/hjson/hjson-go/v4"
 )
 
-
-var  NewEmployeeDaoHook func(ref gobatis.SqlSession) EmployeeDao
+var NewEmployeeDaoHook func(ref gobatis.SqlSession) EmployeeDao
 
 func newEmployeeDao(ref gobatis.SqlSession) EmployeeDao {
 	if NewEmployeeDaoHook != nil {
@@ -31,6 +30,7 @@ func newEmployeeDao(ref gobatis.SqlSession) EmployeeDao {
 
 func NewEmployees(env *client.Environment,
 	db *gobatis.SessionFactory,
+	users *UserService,
 	operationLogger OperationLogger) (Employees, error) {
 	var fields []CustomField
 	if s := env.Config.StringWithDefault("employeecustomfields", ""); s != "" {
@@ -59,6 +59,7 @@ func NewEmployees(env *client.Environment,
 		db:              db,
 		employeeDao:     newEmployeeDao(sess),
 		departments:     newDepartmentDao(sess),
+		users:           users,
 		fields:          fields,
 	}, nil
 }
@@ -73,6 +74,7 @@ type employeeService struct {
 	enablePasswordCheck bool
 	employeeDao         EmployeeDao
 	departments         DepartmentDao
+	users               *UserService
 	fields              []CustomField
 }
 
@@ -92,10 +94,10 @@ func (svc employeeService) Create(ctx context.Context, employee *Employee) (int6
 	} else if !ok {
 		return 0, errors.NewOperationReject(authn.OpCreateEmployee)
 	}
-	return svc.insert(ctx, currentUser, employee, false)
+	return svc.insert(ctx, currentUser, employee, actionNormal)
 }
 
-func (svc employeeService) insert(ctx context.Context, currentUser authn.AuthUser, employee *Employee, importEmployee bool) (int64, error) {
+func (svc employeeService) insert(ctx context.Context, currentUser authn.AuthUser, employee *Employee, importEmployee int) (int64, error) {
 	v := validation.Default.New()
 	if exists, err := svc.employeeDao.NameExists(ctx, employee.Name); err != nil {
 		return 0, errors.Wrap(err, "查询员工名 '"+employee.Name+"' 是否已存在失败")
@@ -138,10 +140,10 @@ func (svc employeeService) UpdateByID(ctx context.Context, id int64, employee *E
 	if err != nil {
 		return errors.Wrap(err, "更新员工 '"+strconv.FormatInt(id, 10)+"' 失败")
 	}
-	return svc.update(ctx, currentUser, id, employee, old, false)
+	return svc.update(ctx, currentUser, id, employee, old, actionNormal)
 }
 
-func (svc employeeService) update(ctx context.Context, currentUser authn.AuthUser, id int64, employee, old *Employee, importEmployee bool) error {
+func (svc employeeService) update(ctx context.Context, currentUser authn.AuthUser, id int64, employee, old *Employee, importEmployee int) error {
 	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
 		if old.Name != employee.Name {
 			return errors.New("更新员工失败，员工名不可修改")
@@ -304,6 +306,116 @@ func (svc employeeService) List(ctx context.Context, departmentID int64, keyword
 	return svc.employeeDao.List(ctx, departmentID, keyword, sort, offset, limit)
 }
 
+func (svc employeeService) PushToUser(ctx context.Context, id int64, password string) (int64, error) {
+	employee, err := svc.employeeDao.FindByID(ctx, id)
+	if err != nil {
+		return 0, errors.Wrap(err, "查询用户失败")
+	}
+
+	u := employee.ToUser()
+	u.Password = password
+
+	return svc.users.Create(ctx, u)
+}
+
+func (svc employeeService) SyncWithUsers(ctx context.Context, fromUsers []int64, toUsers []int64, createIfNotExist bool) error {
+	currentUser, err := authn.ReadUserFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if len(fromUsers) > 0 {
+		if ok, err := currentUser.HasPermission(ctx, authn.OpUpdateEmployee); err != nil {
+			return errors.Wrap(err, "判断当前用户是否有权限失败")
+		} else if !ok {
+			return errors.NewOperationReject(authn.OpUpdateEmployee)
+		}
+
+		if ok, err := currentUser.HasPermission(ctx, authn.OpViewUser); err != nil {
+			return errors.Wrap(err, "判断当前用户是否有权限失败")
+		} else if !ok {
+			return errors.NewOperationReject(authn.OpViewUser)
+		}
+
+		for _, userID := range fromUsers {
+			err := svc.syncFromUser(ctx, currentUser, userID, createIfNotExist)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if len(toUsers) > 0 {
+		if ok, err := currentUser.HasPermission(ctx, authn.OpUpdateUser); err != nil {
+			return errors.Wrap(err, "判断当前用户是否有权限失败")
+		} else if !ok {
+			return errors.NewOperationReject(authn.OpUpdateUser)
+		}
+
+		if ok, err := currentUser.HasPermission(ctx, authn.OpViewEmployee); err != nil {
+			return errors.Wrap(err, "判断当前用户是否有权限失败")
+		} else if !ok {
+			return errors.NewOperationReject(authn.OpViewEmployee)
+		}
+		for _, userID := range toUsers {
+			err := svc.syncToUser(ctx, currentUser, userID)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (svc employeeService) syncFromUser(ctx context.Context, currentUser authn.AuthUser, userID int64, createIfNotExist bool) error {
+	user, err := svc.users.users.FindByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	old, err := svc.employeeDao.FindByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	newemp := *old
+	newemp.Name = user.Name
+	newemp.Nickname = user.Nickname
+	newemp.DepartmentID = user.DepartmentID
+
+	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
+		err = svc.employeeDao.UpdateByID(ctx, newemp.ID, &newemp)
+		if err != nil {
+			return err
+		}
+
+		svc.logUpdate(ctx, tx, currentUser, newemp.ID, &newemp, old, actionSync)
+		return nil
+	})
+}
+
+func (svc employeeService) syncToUser(ctx context.Context, currentUser authn.AuthUser, userID int64) error {
+	old, err := svc.users.users.FindByID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	emp, err := svc.employeeDao.FindByUserID(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	newuser := *old
+	newuser.Name = emp.Name
+	newuser.Nickname = emp.Nickname
+	newuser.DepartmentID = emp.DepartmentID
+
+	return svc.users.UpdateByID(ctx, userID, &newuser)
+}
+
+func (svc employeeService) GetUserEmployeeDiff(ctx context.Context) ([]client.UserEmployeeDiff, error) {
+	return svc.employeeDao.GetUserEmployeeDiff(ctx)
+}
+
 func (svc employeeService) Export(ctx context.Context, format string, inline bool, writer http.ResponseWriter) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
@@ -453,7 +565,7 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 						return errors.Wrap(err, origin+" '"+value+"' 查询失败")
 					}
 
-					if !departmentAutoCreate{
+					if !departmentAutoCreate {
 						return errors.New(origin + " '" + value + "' 没有找到")
 					}
 					if !canCreateDepartment {
@@ -483,7 +595,7 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 					if override {
 						err = errors.New("员工 '" + record.Name + "' 已存在")
 					} else if canUpdate {
-						err = svc.update(ctx, currentUser, old.ID, record, old, true)
+						err = svc.update(ctx, currentUser, old.ID, record, old, actionImport)
 					} else {
 						err = errors.New("没有更新员工的权限，员工 '" + record.Name + "' 没有更新")
 					}
@@ -492,7 +604,7 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 						if record.Nickname == "" {
 							record.Nickname = record.Name
 						}
-						_, err = svc.insert(ctx, currentUser, record, true)
+						_, err = svc.insert(ctx, currentUser, record, actionImport)
 					} else {
 						err = errors.New("没有新建员工的权限，员工 '" + record.Name + "' 没有创建")
 					}
@@ -503,7 +615,7 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 	})
 }
 
-func (svc employeeService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, employee *Employee, importEmployee bool) {
+func (svc employeeService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, employee *Employee, importEmployee int) {
 	if !enableOplog {
 		return
 	}
@@ -549,10 +661,16 @@ func (svc employeeService) logCreate(ctx context.Context, tx *gobatis.Tx, curren
 
 	typeStr := authn.OpCreateEmployee
 	content := "创建员工成功"
-	if importEmployee {
-		typeStr = "importuser"
-		content = "导入员工成功"
+	switch importEmployee {
+	case actionNormal:
+	case actionSync:
+		typeStr = "synccreateemployee"
+		content = "同步创建员工成功"
+	case actionImport:
+		typeStr = "importcreateemployee"
+		content = "导入创建员工成功"
 	}
+
 	err := svc.operationLogger.WithTx(tx.DB()).LogRecord(ctx, &OperationLog{
 		UserID:     currentUser.ID(),
 		Username:   currentUser.Nickname(),
@@ -570,7 +688,7 @@ func (svc employeeService) logCreate(ctx context.Context, tx *gobatis.Tx, curren
 	}
 }
 
-func (svc employeeService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, employee, old *Employee, importEmployee bool) {
+func (svc employeeService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, employee, old *Employee, importEmployee int) {
 	if !enableOplog {
 		return
 	}
@@ -656,15 +774,22 @@ func (svc employeeService) logUpdate(ctx context.Context, tx *gobatis.Tx, curren
 	}
 
 	typeStr := authn.OpUpdateEmployee
-	if importEmployee {
-		typeStr = "importuser"
+	content := "更新员工成功"
+	switch importEmployee {
+	case actionNormal:
+	case actionSync:
+		typeStr = "syncupdateemployee"
+		content = "同步更新员工成功"
+	case actionImport:
+		typeStr = "importupdateemployee"
+		content = "导入更新员工成功"
 	}
 	err := svc.operationLogger.WithTx(tx.DB()).LogRecord(ctx, &OperationLog{
 		UserID:     currentUser.ID(),
 		Username:   currentUser.Nickname(),
 		Successful: true,
 		Type:       typeStr,
-		Content:    "更新员工成功",
+		Content:    content,
 		Fields: &OperationLogRecord{
 			ObjectType: "employee",
 			ObjectID:   id,

@@ -6,6 +6,8 @@ package client
 import (
 	"context"
 	"time"
+
+	"github.com/runner-mei/resty"
 )
 
 type Department struct {
@@ -88,4 +90,10 @@ type Departments interface {
 	// @Router  /departments/tree [get]
 	// @Success 200 {array} Department  "返回所有部门"
 	GetTree(ctx context.Context) ([]*Department, error)
+}
+
+func NewRemoteDepartments(pxy *resty.Proxy) Departments {
+	return DepartmentsClient{
+		Proxy: pxy,
+	}
 }
