@@ -165,6 +165,8 @@ type EmployeeDao interface {
 
 	Insert(ctx context.Context, user *Employee) (int64, error)
 	UpdateByID(ctx context.Context, id int64, u *Employee) error
+	// @type update
+	BindToUser(ctx context.Context, id, userID int64) error
 	DeleteByID(ctx context.Context, id int64) error
 	DeleteByIDList(ctx context.Context, id []int64) error
 

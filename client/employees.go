@@ -99,65 +99,65 @@ type UserEmployeeDiff struct {
 }
 
 type Employees interface {
-	// @Summary 新建一个用户
-	// @Param    employee     body Employee    true     "用户定义"
+	// @Summary 新建一个员工
+	// @Param    employee     body Employee    true     "员工定义"
 	// @Accept   json
 	// @Produce  json
 	// @Router /employees [post]
-	// @Success 200 {int64} int64  "成功时返回新建用户的ID"
+	// @Success 200 {int64} int64  "成功时返回新建员工的ID"
 	Create(ctx context.Context, employee *Employee) (int64, error)
 
-	// @Summary 修改用户名称
-	// @Param    id      path int     true     "用户ID"
-	// @Param    employee    body Employee    true     "用户信息"
+	// @Summary 修改员工名称
+	// @Param    id      path int     true     "员工ID"
+	// @Param    employee    body Employee    true     "员工信息"
 	// @Accept   json
 	// @Produce  json
 	// @Router /employees/{id} [put]
 	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
 	UpdateByID(ctx context.Context, id int64, employee *Employee) error
 
-	// @Summary 删除指定的用户
-	// @Param   id            path int                       true     "用户ID"
+	// @Summary 删除指定的员工
+	// @Param   id            path int                       true     "员工ID"
 	// @Accept  json
 	// @Produce json
 	// @Router  /employees/{id} [delete]
 	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
 	DeleteByID(ctx context.Context, id int64) error
 
-	// @Summary 批量删除指定的用户
-	// @Param   id            query int64                       true     "用户ID"
+	// @Summary 批量删除指定的员工
+	// @Param   id            query int64                       true     "员工ID"
 	// @Accept  json
 	// @Produce json
 	// @Router  /employees/batch [delete]
 	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
 	DeleteBatch(ctx context.Context, id []int64) error
 
-	// @Summary 查询指定的用户
-	// @Param id            path int                       true     "用户ID"
+	// @Summary 查询指定的员工
+	// @Param id            path int                       true     "员工ID"
 	// @Accept  json
 	// @Produce json
 	// @Router  /employees/{id} [get]
-	// @Success 200 {object} Employee  "返回指定的用户"
+	// @Success 200 {object} Employee  "返回指定的员工"
 	FindByID(ctx context.Context, id int64) (*Employee, error)
 
-	// @Summary 按名称查询指定的用户
-	// @Param   name            path string                       true     "用户名"
+	// @Summary 按名称查询指定的员工
+	// @Param   name            path string                       true     "员工名"
 	// @Accept  json
 	// @Produce json
 	// @Router  /employees/by_name/{name} [get]
-	// @Success 200 {array} Employee  "返回所有用户"
+	// @Success 200 {array} Employee  "返回所有员工"
 	FindByName(ctx context.Context, name string) (*Employee, error)
 
-	// @Summary 按关键字查询用户数目，关键字可以是用户名，邮箱以及电话
+	// @Summary 按关键字查询员工数目，关键字可以是员工名，邮箱以及电话
 	// @Param   department_id      query int                          false        "部门"
 	// @Param   keyword            query string                       false        "搜索关键字"
 	// @Accept  json
 	// @Produce json
 	// @Router  /employees/count [get]
-	// @Success 200 {int64} int64  "返回所有用户数目"
+	// @Success 200 {int64} int64  "返回所有员工数目"
 	Count(ctx context.Context, departmentID int64, keyword string) (int64, error)
 
-	// @Summary 按关键字查询用户，关键字可以是用户名，邮箱以及电话
+	// @Summary 按关键字查询员工，关键字可以是员工名，邮箱以及电话
 	// @Param   department_id      query int                          false        "部门"
 	// @Param   keyword            query string                       false        "搜索关键字"
 	// @Param   offset             query int                          false        "offset"
@@ -166,33 +166,44 @@ type Employees interface {
 	// @Accept  json
 	// @Produce json
 	// @Router  /employees [get]
-	// @Success 200 {array} Employee  "返回所有用户"
+	// @Success 200 {array} Employee  "返回所有员工"
 	List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]Employee, error)
 
-	// @Summary  新建一个可登录用户
-	// @Param    id          path int     true     "用户ID"
-	// @Param    password    body int     true     "用户信息"
+	// @Summary  用员工信息新建一个可登录用
+	// @Param    id          path int     true     "员工ID"
+	// @Param    password    body int     true     "密码"
 	// @Accept   json
 	// @Produce  json
 	// @Router   /employees/{id}/users [post]
 	// @Success  200 {string} string  "返回一个新建用户的 id"
 	PushToUser(ctx context.Context, id int64, password string) (int64, error)
 
-	// @Summary  同用户和可登录用户的数据
-	// @Param    from_users            body []int64     true     "需要将从可登录用户同步到用户的列表"
-	// @Param    to_users              body []int64     true     "需要将从用户同步到可登录用户的列表"
+	// @Summary  将员工绑定到一个可登录用户
+	// @Param    id          path int                        true     "员工ID"
+	// @Param    userID      path int                        true     "用户ID"
+	// @Param    fields      body map[string]interface{}     true     "用户信息 (此参数暂时不起效，请传空)"
+	// @Accept   json
+	// @Produce  json
+	// @Router   /employees/{id}/users/{userID} [put]
+	// @Success  200 {string} string  "返回一个无意义的 ok 字符串"
+	BindToUser(ctx context.Context, id int64, userID int64, fields map[string]interface{}) error
+
+	// @Summary  同员工和可登录用户的数据
+	// @Param    from_users            body []int64     true     "需要将从可登录用户同步到员工的列表"
+	// @Param    to_users              body []int64     true     "需要将从员工同步到可登录用户的列表"
+	// @Param    password              body string      false    "将从员工同步到可登录用户时如果用户不存在需要新建用户，本参数为新建用户的密码"
 	// @Param    create_if_not_exist   body bool        true     "员工不存在时创建它"
 	// @Accept   json
 	// @Produce  json
 	// @Router   /employees/users/sync [post]
-	// @Success  200 {array} UserEmployeeDiff  "返回用户和可登录用户之间的差异"
-	SyncWithUsers(ctx context.Context, fromUsers []int64, toUsers []int64, createIfNotExist bool)  error
+	// @Success  200 {array} UserEmployeeDiff  "返回员工和可登录用户之间的差异"
+	SyncWithUsers(ctx context.Context, fromUsers []int64, toUsers []int64, password string, createIfNotExist bool)  error
 
-	// @Summary  获取用户和可登录用户之间的差异列表
+	// @Summary  获取员工和可登录用户之间的差异列表
 	// @Accept   json
 	// @Produce  json
 	// @Router   /employees/users/diff [post]
-	// @Success  200 {array} UserEmployeeDiff  "返回用户和可登录用户之间的差异"
+	// @Success  200 {array} UserEmployeeDiff  "返回员工和可登录用户之间的差异"
 	GetUserEmployeeDiff(ctx context.Context) ([]UserEmployeeDiff, error)
 }
 

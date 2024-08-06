@@ -174,7 +174,7 @@ func (svc UserService) insert(ctx context.Context, currentUser authn.AuthUser, u
 
 	var id int64
 	var err error
-	err = svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
+	err = svc.db.InTx(ctx, nil, false, func(ctx context.Context, tx *gobatis.Tx) error {
 		id, err = svc.users.Insert(ctx, user)
 		if err != nil {
 			return err
@@ -203,7 +203,7 @@ func (svc UserService) UpdateByID(ctx context.Context, id int64, user *User) err
 }
 
 func (svc UserService) update(ctx context.Context, currentUser authn.AuthUser, id int64, user, old *User, importUser int) error {
-	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
+	return svc.db.InTx(ctx, nil, false, func(ctx context.Context, tx *gobatis.Tx) error {
 		if old.Name != user.Name {
 			return errors.New("更新用户失败，用户名不可修改")
 		}

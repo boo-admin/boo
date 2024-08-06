@@ -25,6 +25,7 @@ var (
 	ErrAlreadyClosed            = errors.New("server is closed")
 	ErrValueNull                = errors.New("value is null")
 	ErrExpectedType             = errors.New("Type unexpected")
+	ErrUnimplemented            = errors.New("unimplemented")
 	ErrValidationError          = WithErrorCode(errors.New("validation error"), http.StatusBadRequest)
 )
 

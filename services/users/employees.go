@@ -2,6 +2,7 @@ package users
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -307,18 +308,74 @@ func (svc employeeService) List(ctx context.Context, departmentID int64, keyword
 }
 
 func (svc employeeService) PushToUser(ctx context.Context, id int64, password string) (int64, error) {
+	currentUser, err := authn.ReadUserFromContext(ctx)
+	if err != nil {
+		return 0, err
+	}
+	if ok, err := currentUser.HasPermission(ctx, authn.OpUpdateEmployee); err != nil {
+		return 0, errors.Wrap(err, "判断当前用户是否有权限失败")
+	} else if !ok {
+		return 0, errors.NewOperationReject(authn.OpUpdateEmployee)
+	}
+	if ok, err := currentUser.HasPermission(ctx, authn.OpCreateUser); err != nil {
+		return 0, errors.Wrap(err, "判断当前用户是否有权限失败")
+	} else if !ok {
+		return 0, errors.NewOperationReject(authn.OpCreateUser)
+	}
+
 	employee, err := svc.employeeDao.FindByID(ctx, id)
 	if err != nil {
-		return 0, errors.Wrap(err, "查询用户失败")
+		return 0, errors.Wrap(err, "查询员工失败")
 	}
 
 	u := employee.ToUser()
 	u.Password = password
 
-	return svc.users.Create(ctx, u)
+	var userID int64
+	err = svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
+		userID, err = svc.users.insert(ctx, currentUser, u, actionSync)
+		if err != nil {
+			return errors.Wrap(err, "新建用户失败")
+		}
+
+		err = svc.employeeDao.BindToUser(ctx, id, userID)
+		if err != nil {
+			return err
+		}
+
+		svc.logBind(ctx, tx, currentUser, employee)
+		return nil
+	})
+	return userID, err
 }
 
-func (svc employeeService) SyncWithUsers(ctx context.Context, fromUsers []int64, toUsers []int64, createIfNotExist bool) error {
+func (svc employeeService) BindToUser(ctx context.Context, id int64, userID int64, fields map[string]interface{}) error {
+	currentUser, err := authn.ReadUserFromContext(ctx)
+	if err != nil {
+		return err
+	}
+	if ok, err := currentUser.HasPermission(ctx, authn.OpUpdateEmployee); err != nil {
+		return errors.Wrap(err, "判断当前用户是否有权限失败")
+	} else if !ok {
+		return errors.NewOperationReject(authn.OpUpdateEmployee)
+	}
+
+	employee, err := svc.employeeDao.FindByID(ctx, id)
+	if err != nil {
+		return errors.Wrap(err, "查询员工失败")
+	}
+
+	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
+		err := svc.employeeDao.BindToUser(ctx, id, userID)
+		if err != nil {
+			return err
+		}
+		svc.logBind(ctx, tx, currentUser, employee)
+		return nil
+	})
+}
+
+func (svc employeeService) SyncWithUsers(ctx context.Context, fromUsers []int64, toUsers []int64, password string, createIfNotExist bool) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -328,6 +385,14 @@ func (svc employeeService) SyncWithUsers(ctx context.Context, fromUsers []int64,
 			return errors.Wrap(err, "判断当前用户是否有权限失败")
 		} else if !ok {
 			return errors.NewOperationReject(authn.OpUpdateEmployee)
+		}
+
+		if createIfNotExist {
+			if ok, err := currentUser.HasPermission(ctx, authn.OpCreateEmployee); err != nil {
+				return errors.Wrap(err, "判断当前用户是否有权限失败")
+			} else if !ok {
+				return errors.NewOperationReject(authn.OpCreateEmployee)
+			}
 		}
 
 		if ok, err := currentUser.HasPermission(ctx, authn.OpViewUser); err != nil {
@@ -356,8 +421,8 @@ func (svc employeeService) SyncWithUsers(ctx context.Context, fromUsers []int64,
 		} else if !ok {
 			return errors.NewOperationReject(authn.OpViewEmployee)
 		}
-		for _, userID := range toUsers {
-			err := svc.syncToUser(ctx, currentUser, userID)
+		for _, employeeID := range toUsers {
+			err := svc.syncToUser(ctx, currentUser, employeeID, password, createIfNotExist)
 			if err != nil {
 				return err
 			}
@@ -372,44 +437,66 @@ func (svc employeeService) syncFromUser(ctx context.Context, currentUser authn.A
 		return err
 	}
 
-	old, err := svc.employeeDao.FindByUserID(ctx, userID)
+	oldEmployee, err := svc.employeeDao.FindByUserID(ctx, userID)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) && createIfNotExist {
+			return errors.Wrap(errors.ErrUnimplemented, "自动创建员工未实现")
+		}
+
+		// if ok, err := currentUser.HasPermission(ctx, authn.OpCreateEmployee); err != nil {
+		// 	return errors.Wrap(err, "判断当前用户是否有权限失败")
+		// } else if !ok {
+		// 	return errors.NewOperationReject(authn.OpCreateEmployee)
+		// }
 		return err
 	}
 
-	newemp := *old
-	newemp.Name = user.Name
-	newemp.Nickname = user.Nickname
-	newemp.DepartmentID = user.DepartmentID
+	newEmployee := *oldEmployee
+	newEmployee.Name = user.Name
+	newEmployee.Nickname = user.Nickname
+	newEmployee.DepartmentID = user.DepartmentID
 
 	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
-		err = svc.employeeDao.UpdateByID(ctx, newemp.ID, &newemp)
+		err = svc.employeeDao.UpdateByID(ctx, newEmployee.ID, &newEmployee)
 		if err != nil {
 			return err
 		}
 
-		svc.logUpdate(ctx, tx, currentUser, newemp.ID, &newemp, old, actionSync)
+		svc.logUpdate(ctx, tx, currentUser, newEmployee.ID, &newEmployee, oldEmployee, actionSync)
 		return nil
 	})
 }
 
-func (svc employeeService) syncToUser(ctx context.Context, currentUser authn.AuthUser, userID int64) error {
-	old, err := svc.users.users.FindByID(ctx, userID)
+func (svc employeeService) syncToUser(ctx context.Context, currentUser authn.AuthUser, employeeID int64, password string, createIfNotExist bool) error {
+	emp, err := svc.employeeDao.FindByID(ctx, employeeID)
 	if err != nil {
 		return err
 	}
 
-	emp, err := svc.employeeDao.FindByUserID(ctx, userID)
+	if emp.UserID <= 0 {
+		if !createIfNotExist {
+			return errors.New("该员工没有关联可登录用户")
+		}
+		// if ok, err := currentUser.HasPermission(ctx, authn.OpCreateUser); err != nil {
+		// 	return errors.Wrap(err, "判断当前用户是否有权限失败")
+		// } else if !ok {
+		// 	return errors.NewOperationReject(authn.OpCreateUser)
+		// }
+		return errors.Wrap(errors.ErrUnimplemented, "自动创建可登录用户未实现")
+	}
+	oldUser, err := svc.users.users.FindByID(ctx, emp.UserID)
 	if err != nil {
 		return err
 	}
 
-	newuser := *old
-	newuser.Name = emp.Name
-	newuser.Nickname = emp.Nickname
-	newuser.DepartmentID = emp.DepartmentID
+	newUser := *oldUser
+	newUser.Name = emp.Name
+	newUser.Nickname = emp.Nickname
+	newUser.DepartmentID = emp.DepartmentID
 
-	return svc.users.UpdateByID(ctx, userID, &newuser)
+	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
+		return svc.users.update(ctx, currentUser, newUser.ID, &newUser, oldUser, actionSync)
+	})
 }
 
 func (svc employeeService) GetUserEmployeeDiff(ctx context.Context) ([]client.UserEmployeeDiff, error) {
@@ -636,7 +723,7 @@ func (svc employeeService) logCreate(ctx context.Context, tx *gobatis.Tx, curren
 	}
 	records = append(records, ChangeRecord{
 		Name:        "name",
-		DisplayName: "用户名",
+		DisplayName: "员工名",
 		NewValue:    employee.Name,
 	}, ChangeRecord{
 		Name:        "nickname",
@@ -798,6 +885,27 @@ func (svc employeeService) logUpdate(ctx context.Context, tx *gobatis.Tx, curren
 	})
 	if err != nil {
 		svc.logger.WarnContext(ctx, "记录更新员工的操作失败", slog.Any("err", err))
+	}
+}
+
+func (svc employeeService) logBind(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, employee *Employee) {
+	if !enableOplog {
+		return
+	}
+	err := svc.operationLogger.WithTx(tx.DB()).LogRecord(ctx, &OperationLog{
+		UserID:     currentUser.ID(),
+		Username:   currentUser.Nickname(),
+		Successful: true,
+		Type:       authn.OpUpdateEmployee,
+		Content:    "绑定一个可登录用户",
+		Fields: &OperationLogRecord{
+			ObjectType: "employee",
+			ObjectID:   employee.ID,
+			Records:    []ChangeRecord{},
+		},
+	})
+	if err != nil {
+		svc.logger.WarnContext(ctx, "记录新建员工的操作失败", slog.Any("err", err))
 	}
 }
 
