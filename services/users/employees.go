@@ -22,7 +22,7 @@ import (
 
 var NewEmployeeDaoHook func(ref gobatis.SqlSession) EmployeeDao
 
-func newEmployeeDao(ref gobatis.SqlSession) EmployeeDao {
+func NewEmployeeDaoWith(ref gobatis.SqlSession) EmployeeDao {
 	if NewEmployeeDaoHook != nil {
 		return NewEmployeeDaoHook(ref)
 	}
@@ -58,8 +58,8 @@ func NewEmployees(env *client.Environment,
 		logger:          env.Logger.WithGroup("employees"),
 		operationLogger: operationLogger,
 		db:              db,
-		employeeDao:     newEmployeeDao(sess),
-		departments:     newDepartmentDao(sess),
+		employeeDao:     NewEmployeeDaoWith(sess),
+		departments:     NewDepartmentDaoWith(sess),
 		users:           users,
 		fields:          fields,
 	}, nil

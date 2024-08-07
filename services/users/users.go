@@ -24,7 +24,7 @@ import (
 
 var NewUserDaoHook func(ref gobatis.SqlSession) UserDao
 
-func newUserDao(ref gobatis.SqlSession) UserDao {
+func NewUserDaoWith(ref gobatis.SqlSession) UserDao {
 	if NewUserDaoHook != nil {
 		return NewUserDaoHook(ref)
 	}
@@ -70,8 +70,8 @@ func NewUsers(env *client.Environment,
 		defaultUsernames: defaultUsernames,
 
 		enablePasswordCheck: enablePasswordCheck,
-		users:               newUserDao(sess),
-		departments:         newDepartmentDao(sess),
+		users:               NewUserDaoWith(sess),
+		departments:         NewDepartmentDaoWith(sess),
 		fields:              fields,
 		passwordHasher:      passwordHasher,
 	}, nil

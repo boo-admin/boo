@@ -14,7 +14,7 @@ import (
 
 var NewRoleDaoHook func(ref gobatis.SqlSession) RoleDao
 
-func newRoleDao(ref gobatis.SqlSession) RoleDao {
+func NewRoleDaoWith(ref gobatis.SqlSession) RoleDao {
 	if NewRoleDaoHook != nil {
 		return NewRoleDaoHook(ref)
 	}
@@ -28,7 +28,7 @@ func NewRoles(env *client.Environment,
 		env:             env,
 		logger:          env.Logger.WithGroup("roles"),
 		operationLogger: operationLogger,
-		dao:             newRoleDao(db.SessionReference()),
+		dao:             NewRoleDaoWith(db.SessionReference()),
 	}, nil
 }
 

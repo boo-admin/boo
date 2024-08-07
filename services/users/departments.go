@@ -16,7 +16,7 @@ import (
 
 var NewDepartmentDaoHook func(ref gobatis.SqlSession) DepartmentDao
 
-func newDepartmentDao(ref gobatis.SqlSession) DepartmentDao {
+func NewDepartmentDaoWith(ref gobatis.SqlSession) DepartmentDao {
 	if NewDepartmentDaoHook != nil {
 		return NewDepartmentDaoHook(ref)
 	}
@@ -30,7 +30,7 @@ func NewDepartments(env *client.Environment,
 		env:             env,
 		logger:          env.Logger.WithGroup("departments"),
 		operationLogger: operationLogger,
-		dao:             newDepartmentDao(db.SessionReference()),
+		dao:             NewDepartmentDaoWith(db.SessionReference()),
 	}, nil
 }
 
