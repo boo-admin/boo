@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/boo-admin/boo/errors"
+	"github.com/boo-admin/boo/goutils/get"
 	"github.com/go-playground/locales/en"
 	"github.com/go-playground/locales/zh"
 	ut "github.com/go-playground/universal-translator"
@@ -62,6 +63,20 @@ type ValidatableError interface {
 }
 
 func ToValidationErrors(err error) (bool, []ValidationError) {
+	if encodeErr, ok := err.(*errors.EncodeError); ok {
+		if encodeErr.Code != errors.ErrValidationError.ErrorCode() {
+			return false, nil
+		}
+
+		if len(encodeErr.Internals) > 0 {
+			var validationErrors = make([]ValidationError, len(encodeErr.Internals))
+			for idx := range encodeErr.Internals {
+				validationErrors[idx] = *toValidationError(&encodeErr.Internals[idx])
+			}
+			return true, validationErrors
+		}
+		return true, []ValidationError{*toValidationError(encodeErr)}
+	}
 	e, ok := err.(interface {
 		ToValidationErrors() []ValidationError
 	})
@@ -80,6 +95,22 @@ func ToValidationErrors(err error) (bool, []ValidationError) {
 }
 
 type ValidationErrors []ValidationError
+
+func (err ValidationErrors) ToEncodeError(code ...int)  *errors.EncodeError {
+	if len(err) == 0 {
+		return nil
+	}
+
+	var internals = make([]errors.EncodeError, len(err))
+	for idx := range internals {
+		internals[idx] = *err[idx].ToEncodeError()
+	}
+	return &errors.EncodeError{
+		Code:    errors.ErrValidationError.ErrorCode(),
+		Message: "表单参数验证错误",
+		Internals:  internals,
+	}	
+}
 
 func (err ValidationErrors) ErrorCode() int {
 	return errors.GetErrorCode(errors.ErrValidationError)
@@ -125,6 +156,25 @@ type ValidationError struct {
 	Code, Message, Key string
 }
 
+func toValidationError(encodeErr *errors.EncodeError) *ValidationError {
+	return &ValidationError{
+		Code: get.StringWithDefault(encodeErr.Fields, "validation.code", ""),
+		Message: encodeErr.Message,
+		Key: get.StringWithDefault(encodeErr.Fields, "validation.key", ""),
+	}
+}
+
+func (e *ValidationError) ToEncodeError(code ...int)  *errors.EncodeError {
+	return &errors.EncodeError{
+		Code:    errors.ErrValidationError.ErrorCode(),
+		Message: e.Message,
+		Fields:  map[string]interface{}{
+			"validation.code": e.Code,
+			"validation.key": e.Key,
+		},
+	}	
+}
+
 func (e *ValidationError) ErrorCode() int {
 	return errors.GetErrorCode(errors.ErrValidationError)
 }
@@ -156,6 +206,8 @@ func (e *ValidationError) IsValidationErrors() bool {
 func (e *ValidationError) ToValidationErrors() []ValidationError {
 	return []ValidationError{*e}
 }
+
+var _ errors.ConvertToEncodeError = &ValidationError{}
 
 func NewValidationError(field, message string) error {
 	return &ValidationError{Key: field, Message: message}
