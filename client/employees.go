@@ -35,14 +35,14 @@ func (u *Employee) ToUser() *User {
 
 	return &User{
 		DepartmentID: u.DepartmentID,
-		Name: u.Name,
-		Nickname: u.Nickname,
-		Description: u.Description,
-		Source: u.Source,
-		Fields: fields,
-		CreatedAt: u.CreatedAt,
-		UpdatedAt: u.UpdatedAt,
-		Department: u.Department,
+		Name:         u.Name,
+		Nickname:     u.Nickname,
+		Description:  u.Description,
+		Source:       u.Source,
+		Fields:       fields,
+		CreatedAt:    u.CreatedAt,
+		UpdatedAt:    u.UpdatedAt,
+		Department:   u.Department,
 	}
 }
 
@@ -57,15 +57,14 @@ func (u *Employee) From(user *User) {
 	}
 
 	u.DepartmentID = user.DepartmentID
-	u.Name= user.Name
-	u.Nickname= user.Nickname
-	u.Description= user.Description
-	u.Source= user.Source
-	u.CreatedAt= user.CreatedAt
-	u.UpdatedAt= user.UpdatedAt
-	u.Department= user.Department
+	u.Name = user.Name
+	u.Nickname = user.Nickname
+	u.Description = user.Description
+	u.Source = user.Source
+	u.CreatedAt = user.CreatedAt
+	u.UpdatedAt = user.UpdatedAt
+	u.Department = user.Department
 }
-
 
 func (u *Employee) GetPhone() string {
 	return u.GetString(Phone.ID)
@@ -88,14 +87,14 @@ func (u *Employee) GetString(key string) string {
 }
 
 type UserEmployeeDiff struct {
-	UserID int64   `json:"user_id" xorm:"user_id null"`
+	UserID     int64 `json:"user_id" xorm:"user_id null"`
 	EmployeeID int64 `json:"employee_id" xorm:"employee_id null"`
 
-	UserNickname  string `json:"user_nickname" xorm:"user_nickname null"`
-	EmployeeNickname  string `json:"employee_nickname"  xorm:"employee_nickname null"`
+	UserNickname     string `json:"user_nickname" xorm:"user_nickname null"`
+	EmployeeNickname string `json:"employee_nickname"  xorm:"employee_nickname null"`
 
-	UserDepartmentID  int64 `json:"user_department_id" xorm:"user_department_id null"`
-	EmployeeDepartmentID  int64 `json:"employee_department_id" xorm:"employee_department_id null"`
+	UserDepartmentID     int64 `json:"user_department_id" xorm:"user_department_id null"`
+	EmployeeDepartmentID int64 `json:"employee_department_id" xorm:"employee_department_id null"`
 }
 
 type Employees interface {
@@ -197,7 +196,7 @@ type Employees interface {
 	// @Produce  json
 	// @Router   /employees/users/sync [post]
 	// @Success  200 {array} UserEmployeeDiff  "返回员工和可登录用户之间的差异"
-	SyncWithUsers(ctx context.Context, fromUsers []int64, toUsers []int64, password string, createIfNotExist bool)  error
+	SyncWithUsers(ctx context.Context, fromUsers []int64, toUsers []int64, password string, createIfNotExist bool) error
 
 	// @Summary  获取员工和可登录用户之间的差异列表
 	// @Accept   json

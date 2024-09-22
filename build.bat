@@ -76,6 +76,7 @@ del /s .\services\users\*gobatis.go
 mkdir .\services\docs
 go generate ./client
 go generate ./services/users
+go generate ./services/authn/session_auth
 go generate .
 :generate_ok
 
@@ -132,17 +133,17 @@ golangci-lint run --tests=false %1 %2
 
 @goto :eof
 :help
-@echo Ê¹ÓÃ·½·¨ÈçÏÂ  build  ÃüÁî
-@echo  tools    °²×°Ïà¹Ø¹¤¾ß
-@echo  gen      Éú³É±àÒëËùĞèÒªµÄ´úÂë
-@echo  genall   Í¬ gen Ò»Ñù, ËüÊÇÒ»¸ö gen ±ğÃû
-@echo  clean    Çå¿Õ gen ÃüÁîÉú³ÉµÄ´úÂë
-@echo  test     ÔËĞĞµ¥ÎŞ²âÊÔ
-@echo  compile  ±àÒë³ÌĞò
-@echo  all      ÔËĞĞÉÏÃæËùÓĞÃüÁî
+@echo ä½¿ç”¨æ–¹æ³•å¦‚ä¸‹  build  å‘½ä»¤
+@echo  tools    å®‰è£…ç›¸å…³å·¥å…·
+@echo  gen      ç”Ÿæˆç¼–è¯‘æ‰€éœ€è¦çš„ä»£ç 
+@echo  genall   åŒ gen ä¸€æ ·, å®ƒæ˜¯ä¸€ä¸ª gen åˆ«å
+@echo  clean    æ¸…ç©º gen å‘½ä»¤ç”Ÿæˆçš„ä»£ç 
+@echo  test     è¿è¡Œå•æ— æµ‹è¯•
+@echo  compile  ç¼–è¯‘ç¨‹åº
+@echo  all      è¿è¡Œä¸Šé¢æ‰€æœ‰å‘½ä»¤
 @echo   
-@echo  ¿ª·¢¹ı³ÌÖĞÓÃµÄÃüÁî
-@echo  lint     ÔËĞĞ´úÂë¼ì²é
-@echo  goose    Éú³ÉÊı¾İ¿â³õÊ¼»¯ sql ÎÄ¼ş
+@echo  å¼€å‘è¿‡ç¨‹ä¸­ç”¨çš„å‘½ä»¤
+@echo  lint     è¿è¡Œä»£ç æ£€æŸ¥
+@echo  goose    ç”Ÿæˆæ•°æ®åº“åˆå§‹åŒ– sql æ–‡ä»¶
 @goto :eof
 :help_ok

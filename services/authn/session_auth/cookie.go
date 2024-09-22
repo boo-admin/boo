@@ -20,6 +20,8 @@ var ErrCookieEmpty = errors.New("session cookie is empty")
 var ErrSessionExpiredOrMissing = errors.New("session is expired or missing")
 var ErrSessionInvalid = errors.New("session is invalid")
 var ErrSessionUserMissing = errors.New("session user is missing")
+var ErrSessionNotExists = errors.New("session isnot exists")
+var ErrSessionExpired = errors.New("session expired")
 
 const (
 	SESSION_ID_KEY     = "session_id"

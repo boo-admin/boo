@@ -7,7 +7,7 @@ import (
 )
 
 type OnlineChecker interface {
-	IsOnlineExists(ctx context.Context, userid interface{}, username, loginAddress string) error
+	IsOnlineExists(ctx context.Context, username, loginAddress string) error
 }
 
 // IsOnlineExists(userid interface{}, username, loginAddress string) error
@@ -62,7 +62,7 @@ func OnlineCheck(online OnlineChecker, loginConflict string) AuthOption {
 				return nil
 			}
 
-			return online.IsOnlineExists(ctx.Ctx, ctx.Request.UserID, ctx.Request.Username, ctx.Request.Address)
+			return online.IsOnlineExists(ctx.Ctx, ctx.Request.Username, ctx.Request.Address)
 		}))
 
 		return nil
