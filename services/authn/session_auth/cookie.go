@@ -22,8 +22,6 @@ var ErrSessionInvalid = errors.New("session is invalid")
 var ErrSessionUserMissing = errors.New("session user is missing")
 
 const (
-	// DefaultSessionKey default key value
-	DefaultSessionKey  = "PLAY_SESSION"
 	SESSION_ID_KEY     = "session_id"
 	SESSION_VALID_KEY  = "_valid"
 	SESSION_USER_KEY   = "user"
