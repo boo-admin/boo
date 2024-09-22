@@ -1,4 +1,4 @@
-package sessions
+package session_store
 
 import (
 	"context"

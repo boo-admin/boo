@@ -1,4 +1,4 @@
-package authncore
+package session_core
 
 import (
 	"encoding/json"

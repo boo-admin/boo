@@ -7,7 +7,7 @@ import (
 	"context"
 
 	"github.com/boo-admin/boo/client"
-	"github.com/boo-admin/boo/services/authn/authncore"
+	"github.com/boo-admin/boo/services/authn/session_auth/session_core"
 	"github.com/runner-mei/errors"
 )
 
@@ -63,7 +63,7 @@ type OnlineAdder interface {
 type Onlines interface {
 	client.OnlineQueryer
 
-	authncore.OnlineChecker
+	session_core.OnlineChecker
 
 	OnlineAdder
 }
@@ -107,15 +107,15 @@ func OnlineCount(ctx context.Context, onlines Onlines, username string, address 
 	return count, nil
 }
 
-type Locker = authncore.Locker
-type IsLocker = authncore.IsLocker
+type Locker = session_core.Locker
+type IsLocker = session_core.IsLocker
 
 type NoneLocker struct{}
 
-func (NoneLocker) Lock(ctx *authncore.AuthContext) error {
+func (NoneLocker) Lock(ctx *session_core.AuthContext) error {
 	return nil
 }
 
-func (NoneLocker) IsLocked(ctx *authncore.AuthContext) error {
+func (NoneLocker) IsLocked(ctx *session_core.AuthContext) error {
 	return nil
 }

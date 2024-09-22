@@ -1,4 +1,4 @@
-package sessions
+package session_store
 
 import (
 	"context"
@@ -54,7 +54,7 @@ func (o *onlineInfo) GetOnlineInfo() client.OnlineInfo {
 	return c
 }
 
-func CreateInmem(env *client.Environment) *SessionManager {
+func CreateInmem(env *client.Environment) session_auth.Onlines {
 	return &SessionManager{
 		apiKey:   env.Config.StringWithDefault(CfgSessionRemoteApiKey, ""),
 		filename: env.Fs.FromSession("boo_sessions.json"),
