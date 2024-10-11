@@ -6,11 +6,11 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
-	"fmt"
 
 	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/goutils/as"

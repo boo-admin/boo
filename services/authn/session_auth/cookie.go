@@ -20,10 +20,10 @@ var ErrCookieEmpty = errors.New("session cookie is empty")
 var ErrSessionExpiredOrMissing = errors.New("session is expired or missing")
 var ErrSessionInvalid = errors.New("session is invalid")
 var ErrSessionUserMissing = errors.New("session user is missing")
+var ErrSessionNotExists = errors.New("session isnot exists")
+var ErrSessionExpired = errors.New("session expired")
 
 const (
-	// DefaultSessionKey default key value
-	DefaultSessionKey  = "PLAY_SESSION"
 	SESSION_ID_KEY     = "session_id"
 	SESSION_VALID_KEY  = "_valid"
 	SESSION_USER_KEY   = "user"

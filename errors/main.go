@@ -73,6 +73,12 @@ func Unwrap(err error) error {
 }
 
 func Is(err, target error) bool {
+	c1 := GetErrorCode(err)
+	c2 := GetErrorCode(target)
+
+	if c1 != 0 && c1 == c2 {
+		return true
+	}
 	return xerrors.Is(err, target)
 }
 
@@ -356,7 +362,15 @@ func (err *EncodeError) Error() string {
 	return err.Message
 }
 
+type ConvertToEncodeError interface {
+	ToEncodeError(code ...int)  *EncodeError
+}
+
 func ToEncodeError(err error, code ...int) *EncodeError {
+	cte, ok := err.(ConvertToEncodeError)
+	if ok {
+		return cte.ToEncodeError(code...)
+	}
 	return &EncodeError{
 		Code:    GetErrorCode(err, code...),
 		Message: err.Error(),

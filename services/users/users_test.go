@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 	"time"
-	"strings"
 
 	"github.com/boo-admin/boo/app_tests"
 	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/errors"
+	"github.com/boo-admin/boo/validation"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -67,13 +68,24 @@ func TestUser1(t *testing.T) {
 	if err == nil {
 		t.Error("want error got ok")
 		return
-	} else if !strings.Contains(err.Error(), "abc") {
+	} else if !errors.Is(err, errors.ErrValidationError) {
 		t.Error(err)
 		t.Errorf("%#v", err)
 		return
+	} else {
+		ok, errList := validation.ToValidationErrors(err)
+		if !ok {
+			t.Error(err)
+			t.Errorf("%#v", err)
+			return
+		}
+
+		if errList[0].Key != "Password" { 
+			t.Error(errList[0].Code, errList[0].Key, errList[0].Message)
+		}
 	}
 
-	data.Password =     "asdf#1=$AuH@*&"
+	data.Password = "asdf#1=$AuH@*&"
 	userid, err = users.Create(ctx, data)
 	if err != nil {
 		t.Error(err)
@@ -121,7 +133,7 @@ func TestUser1(t *testing.T) {
 		t.Error(diff)
 	}
 
-	list, err := users.List(ctx,0, "", "", 0, 0)
+	list, err := users.List(ctx, 0, "", "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return
