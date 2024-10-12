@@ -110,7 +110,7 @@ func (svc UserService) ValidatePassword(usernames []string, password string) err
 func (svc UserService) ValidateUser(v *validation.Validation, user *User) bool {
 	v.Required("name", user.Name)
 	v.Required("nickname", user.Nickname)
-	if user.Source != "ldap" && user.Source != "cas" && user.Source != "oauth" {
+	if user.Source != "ldap" && user.Source != "cas" && user.Source != "oauth" && !isAllStar(user.Password) {
 		v.MinSize("Password", user.Password, 8)
 		v.MaxSize("Password", user.Password, 250)
 
@@ -263,9 +263,11 @@ func (svc UserService) update(ctx context.Context, currentUser authn.AuthUser, i
 			}
 		}
 
+		newUser.Password = "****"
 		if svc.ValidateUser(v, &newUser) {
 			return v.ToError()
 		}
+		newUser.Password = old.Password
 
 		err := svc.users.UpdateByID(ctx, id, &newUser)
 		if err != nil {
