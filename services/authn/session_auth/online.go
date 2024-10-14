@@ -8,7 +8,7 @@ import (
 
 	"github.com/boo-admin/boo/client"
 	"github.com/boo-admin/boo/services/authn/session_auth/session_core"
-	"github.com/runner-mei/errors"
+	"github.com/boo-admin/boo/errors"
 )
 
 type ErrOnline struct {
