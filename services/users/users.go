@@ -379,7 +379,7 @@ func (svc UserService) DeleteBatch(ctx context.Context, idlist []int64) error {
 	})
 }
 
-func (svc UserService) FindByID(ctx context.Context, id int64) (*User, error) {
+func (svc UserService) FindByID(ctx context.Context, id int64, includes ...string) (*User, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -410,7 +410,7 @@ func (svc UserService) processUser(user *User) {
 		}
 	}
 }
-func (svc UserService) FindByName(ctx context.Context, name string) (*User, error) {
+func (svc UserService) FindByName(ctx context.Context, name string, includes ...string) (*User, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -434,7 +434,7 @@ func (svc UserService) FindByName(ctx context.Context, name string) (*User, erro
 func (svc UserService) Count(ctx context.Context, departmentID int64, keyword string) (int64, error) {
 	return svc.users.Count(ctx, departmentID, keyword)
 }
-func (svc UserService) List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]User, error) {
+func (svc UserService) List(ctx context.Context, departmentID int64, keyword string, includes []string, sort string, offset, limit int64) ([]User, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
