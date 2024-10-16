@@ -61,10 +61,16 @@ func New(msg string) error {
 }
 
 func WithText(err error, msg string) error {
+	if err == nil {
+		panic("WithText: err is null")
+	}
 	return &withMessage{err: err, noparent: true, msg: msg}
 }
 
 func Wrap(err error, msg string) error {
+	if err == nil {
+		panic("WithText: err is null")
+	}
 	return &withMessage{err: err, msg: msg}
 }
 

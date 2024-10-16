@@ -10,10 +10,12 @@ CREATE TABLE IF NOT EXISTS boo_employees (
   disabled                    boolean,
   source                      varchar(50),
   fields                      jsonb,
+  deleted_at                  timestamp WITH TIME ZONE,
   created_at                  timestamp WITH TIME ZONE,
   updated_at                  timestamp WITH TIME ZONE
 );
 -- +goose StatementEnd
+
 
 -- +goose Down
 DROP TABLE IF EXISTS boo_employees;

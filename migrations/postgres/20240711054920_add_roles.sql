@@ -10,6 +10,6 @@ CREATE TABLE IF NOT EXISTS boo_roles (
 );
 -- +goose StatementEnd
 
+
 -- +goose Down
 DROP TABLE IF EXISTS boo_roles;
-

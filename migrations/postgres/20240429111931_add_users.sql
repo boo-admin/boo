@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS boo_users (
   disabled                    boolean,
   source                      varchar(50),
   fields                      jsonb,
+  deleted_at                  timestamp WITH TIME ZONE,
   created_at                  timestamp WITH TIME ZONE,
   updated_at                  timestamp WITH TIME ZONE
 );
@@ -27,6 +28,7 @@ CREATE TABLE IF NOT EXISTS boo_user_profiles (
     UNIQUE(user_id,name)
 );
 -- +goose StatementEnd
+
 
 -- +goose Down
 DROP TABLE IF EXISTS boo_user_profiles;

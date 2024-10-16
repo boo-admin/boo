@@ -5,6 +5,7 @@ package client
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,6 +17,12 @@ import (
 	"github.com/boo-admin/boo/goutils/as"
 	"github.com/runner-mei/resty"
 	"golang.org/x/exp/slog"
+)
+
+var (
+	None = sql.NullBool{}
+	False = sql.NullBool{Valid: true}
+	True = sql.NullBool{Valid: true, Bool: true}
 )
 
 type User struct {
@@ -30,13 +37,14 @@ type User struct {
 	Source                 string                 `json:"source,omitempty" xorm:"source null"`
 	Disabled               bool                   `json:"disabled,omitempty" xorm:"disabled null"`
 	Fields                 map[string]interface{} `json:"fields" xorm:"fields jsonb null"`
+	DeletedAt              *time.Time             `json:"deleted_at,omitempty" xorm:"deleted_at deleted"`
 	CreatedAt              time.Time              `json:"created_at,omitempty" xorm:"created_at created"`
 	UpdatedAt              time.Time              `json:"updated_at,omitempty" xorm:"updated_at updated"`
 
 	IsDefault bool `json:"is_default" xorm:"-"`
 
 	Department *Department `json:"department,omitempty" xorm:"-"`
-	Roles []Role `json:"roles,omitempty" xorm:"-"`
+	Roles      []Role      `json:"roles,omitempty" xorm:"-"`
 }
 
 func (u *User) GetPhone() string {
@@ -147,20 +155,22 @@ type Users interface {
 	ChangePassword(ctx context.Context, id int64, password string) error
 
 	// @Summary 删除指定的用户
-	// @Param   id            path int                       true     "用户ID"
+	// @Param   id            path  int                       true     "用户ID"
+	// @Param   force         query bool                      true     "是软删除还是真删除"
 	// @Accept  json
 	// @Produce json
 	// @Router  /users/{id} [delete]
 	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
-	DeleteByID(ctx context.Context, id int64) error
+	DeleteByID(ctx context.Context, id int64, force bool) error
 
 	// @Summary 批量删除指定的用户
 	// @Param   id            query int64                       true     "用户ID"
+	// @Param   force         query bool                        true     "是软删除还是真删除"
 	// @Accept  json
 	// @Produce json
 	// @Router  /users/batch [delete]
 	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
-	DeleteBatch(ctx context.Context, id []int64) error
+	DeleteBatch(ctx context.Context, id []int64, force bool) error
 
 	// @Summary 查询指定的用户
 	// @Param   id              path int                       true     "用户ID"
@@ -183,15 +193,17 @@ type Users interface {
 	// @Summary 按关键字查询用户数目，关键字可以是用户名，邮箱以及电话
 	// @Param   department_id      query int                          false        "部门"
 	// @Param   keyword            query string                       false        "搜索关键字"
+	// @Param   deleted            query sql.NullBool                 false        "指定是否包含删除的用户"
 	// @Accept  json
 	// @Produce json
 	// @Router  /users/count [get]
 	// @Success 200 {int64} int64  "返回所有用户数目"
-	Count(ctx context.Context, departmentID int64, keyword string) (int64, error)
+	Count(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool) (int64, error)
 
 	// @Summary 按关键字查询用户，关键字可以是用户名，邮箱以及电话
 	// @Param   department_id      query int                          false        "部门"
 	// @Param   keyword            query string                       false        "搜索关键字"
+	// @Param   deleted            query sql.NullBool                 false        "指定是否包含删除的用户"
 	// @Param   include            query []string                     false        "指定返回的内容"
 	// @Param   offset             query int                          false        "offset"
 	// @Param   limit              query int                          false        "limit"
@@ -200,7 +212,7 @@ type Users interface {
 	// @Produce json
 	// @Router  /users [get]
 	// @Success 200 {array} User  "返回所有用户"
-	List(ctx context.Context, departmentID int64, keyword string, includes []string, sort string, offset, limit int64) ([]User, error)
+	List(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool, includes []string, sort string, offset, limit int64) ([]User, error)
 }
 
 func NewRemoteUsers(pxy *resty.Proxy) Users {

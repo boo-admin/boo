@@ -12,5 +12,6 @@ CREATE TABLE IF NOT EXISTS boo_operation_logs (
 );
 -- +goose StatementEnd
 
+
 -- +goose Down
 DROP TABLE IF EXISTS boo_operation_logs;

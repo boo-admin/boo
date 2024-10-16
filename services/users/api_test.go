@@ -75,7 +75,7 @@ func TestUserImport1(t *testing.T) {
 		return
 	}
 
-	list, err := users.List(ctx, 0, "", "", 0, 0)
+	list, err := users.List(ctx, 0, "", client.None, nil, "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -127,7 +127,7 @@ func TestUserImport1(t *testing.T) {
 		return
 	}
 
-	list, err = users.List(ctx, 0, "", "", 0, 0)
+	list, err = users.List(ctx, 0, "", client.None, nil, "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -212,7 +212,7 @@ func TestEmployeeImport1(t *testing.T) {
 		return
 	}
 
-	list, err := users.List(ctx, 0, "", "", 0, 0)
+	list, err := users.List(ctx, 0, "", client.None, "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -264,7 +264,7 @@ func TestEmployeeImport1(t *testing.T) {
 		return
 	}
 
-	list, err = users.List(ctx, 0, "", "", 0, 0)
+	list, err = users.List(ctx, 0, "", client.None, "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return

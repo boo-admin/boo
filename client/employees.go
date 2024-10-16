@@ -5,6 +5,7 @@ package client
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
 	"github.com/runner-mei/resty"
@@ -21,6 +22,7 @@ type Employee struct {
 	Source       string                 `json:"source,omitempty" xorm:"source null"`
 	Disabled     bool                   `json:"disabled,omitempty" xorm:"disabled null"`
 	Fields       map[string]interface{} `json:"fields" xorm:"fields jsonb null"`
+	DeletedAt    *time.Time             `json:"deleted_at,omitempty" xorm:"deleted_at deleted"`
 	CreatedAt    time.Time              `json:"created_at,omitempty" xorm:"created_at created"`
 	UpdatedAt    time.Time              `json:"updated_at,omitempty" xorm:"updated_at updated"`
 
@@ -116,20 +118,22 @@ type Employees interface {
 	UpdateByID(ctx context.Context, id int64, employee *Employee) error
 
 	// @Summary 删除指定的员工
-	// @Param   id            path int                       true     "员工ID"
+	// @Param   id            path  int                       true     "员工ID"
+	// @Param   force         query bool                      true     "是软删除还是真删除"
 	// @Accept  json
 	// @Produce json
 	// @Router  /employees/{id} [delete]
 	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
-	DeleteByID(ctx context.Context, id int64) error
+	DeleteByID(ctx context.Context, id int64, force bool) error
 
 	// @Summary 批量删除指定的员工
 	// @Param   id            query int64                       true     "员工ID"
+	// @Param   force         query bool                        true     "是软删除还是真删除"
 	// @Accept  json
 	// @Produce json
 	// @Router  /employees/batch [delete]
 	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
-	DeleteBatch(ctx context.Context, id []int64) error
+	DeleteBatch(ctx context.Context, id []int64, force bool) error
 
 	// @Summary 查询指定的员工
 	// @Param id            path int                       true     "员工ID"
@@ -150,15 +154,17 @@ type Employees interface {
 	// @Summary 按关键字查询员工数目，关键字可以是员工名，邮箱以及电话
 	// @Param   department_id      query int                          false        "部门"
 	// @Param   keyword            query string                       false        "搜索关键字"
+	// @Param   deleted            query sql.NullBool                 false        "指定是否包含删除的用户"
 	// @Accept  json
 	// @Produce json
 	// @Router  /employees/count [get]
 	// @Success 200 {int64} int64  "返回所有员工数目"
-	Count(ctx context.Context, departmentID int64, keyword string) (int64, error)
+	Count(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool) (int64, error)
 
 	// @Summary 按关键字查询员工，关键字可以是员工名，邮箱以及电话
 	// @Param   department_id      query int                          false        "部门"
 	// @Param   keyword            query string                       false        "搜索关键字"
+	// @Param   deleted            query sql.NullBool                 false        "指定是否包含删除的用户"
 	// @Param   offset             query int                          false        "offset"
 	// @Param   limit              query int                          false        "limit"
 	// @Param   sort               query string                       false        "排序字段"
@@ -166,7 +172,7 @@ type Employees interface {
 	// @Produce json
 	// @Router  /employees [get]
 	// @Success 200 {array} Employee  "返回所有员工"
-	List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]Employee, error)
+	List(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]Employee, error)
 
 	// @Summary  用员工信息新建一个可登录用
 	// @Param    id          path int     true     "员工ID"

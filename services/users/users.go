@@ -2,11 +2,13 @@ package users
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/boo-admin/boo/client"
@@ -21,6 +23,15 @@ import (
 	"github.com/hjson/hjson-go/v4"
 	good_password "github.com/mei-rune/go-good-password"
 )
+
+const DeleteTag = "(deleted:"
+
+func AddDeleteSuffix(name string) string {
+	if strings.Contains(name, DeleteTag) {
+		return name
+	}
+	return name + DeleteTag + " " + time.Now().Format(time.RFC3339) + ")"
+}
 
 var NewUserDaoHook func(ref gobatis.SqlSession) UserDao
 
@@ -322,7 +333,7 @@ func (svc UserService) resetPassword(ctx context.Context, currentUser authn.Auth
 	return nil
 }
 
-func (svc UserService) DeleteByID(ctx context.Context, id int64) error {
+func (svc UserService) DeleteByID(ctx context.Context, id int64, force bool) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -338,16 +349,29 @@ func (svc UserService) DeleteByID(ctx context.Context, id int64) error {
 		return errors.Wrap(err, "删除用户时，查询用户 '"+strconv.FormatInt(id, 10)+"' 失败")
 	}
 
-	err = svc.users.DeleteByID(ctx, id)
-	if err != nil {
-		return errors.Wrap(err, "删除用户失败")
-	}
+	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
+		if !force {
+			if newName := AddDeleteSuffix(old.Name); newName != old.Name {
+				old.Nickname = AddDeleteSuffix(old.Nickname)
 
-	svc.logDelete(ctx, nil, currentUser, old)
-	return nil
+				err := svc.users.UpdateByID(ctx, id, old)
+				if err != nil {
+					return errors.Wrap(err, "删除用户时，更新用户 '"+strconv.FormatInt(id, 10)+"' 的名称失败")
+				}
+			}
+		}
+
+		err := svc.users.DeleteByID(ctx, id, force)
+		if err != nil {
+			return errors.Wrap(err, "删除用户失败")
+		}
+
+		svc.logDelete(ctx, nil, currentUser, old)
+		return nil
+	})
 }
 
-func (svc UserService) DeleteBatch(ctx context.Context, idlist []int64) error {
+func (svc UserService) DeleteBatch(ctx context.Context, idlist []int64, force bool) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -368,7 +392,20 @@ func (svc UserService) DeleteBatch(ctx context.Context, idlist []int64) error {
 	}
 
 	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
-		err = svc.users.DeleteByIDList(ctx, newList)
+		if !force {
+			for _, old := range oldList {
+				if newName := AddDeleteSuffix(old.Name); newName != old.Name {
+					old.Nickname = AddDeleteSuffix(old.Nickname)
+
+					err = svc.users.UpdateByID(ctx, old.ID, &old)
+					if err != nil {
+						return errors.Wrap(err, "删除用户时，更新用户 '"+strconv.FormatInt(old.ID, 10)+"' 的名称失败")
+					}
+				}
+			}
+		}
+
+		err = svc.users.DeleteByIDList(ctx, newList, force)
 		if err != nil {
 			return errors.Wrap(err, "删除用户失败")
 		}
@@ -431,10 +468,10 @@ func (svc UserService) FindByName(ctx context.Context, name string, includes ...
 	svc.processUser(user)
 	return user, nil
 }
-func (svc UserService) Count(ctx context.Context, departmentID int64, keyword string) (int64, error) {
-	return svc.users.Count(ctx, departmentID, keyword)
+func (svc UserService) Count(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool) (int64, error) {
+	return svc.users.Count(ctx, departmentID, keyword, deleted)
 }
-func (svc UserService) List(ctx context.Context, departmentID int64, keyword string, includes []string, sort string, offset, limit int64) ([]User, error) {
+func (svc UserService) List(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool, includes []string, sort string, offset, limit int64) ([]User, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -445,7 +482,7 @@ func (svc UserService) List(ctx context.Context, departmentID int64, keyword str
 		return nil, errors.NewOperationReject(authn.OpViewUser)
 	}
 
-	list, err := svc.users.List(ctx, departmentID, keyword, sort, offset, limit)
+	list, err := svc.users.List(ctx, departmentID, keyword, deleted, sort, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -467,7 +504,7 @@ func (svc UserService) Export(ctx context.Context, format string, inline bool, w
 
 	return importer.WriteHTTP(ctx, "users", format, inline, writer,
 		importer.RecorderFunc(func(ctx context.Context) (importer.RecordIterator, []string, error) {
-			list, err := svc.users.List(ctx, 0, "", "", 0, 0)
+			list, err := svc.users.List(ctx, 0, "", sql.NullBool{Valid: true}, "", 0, 0)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -987,6 +1024,9 @@ func formatOnlyTime(t time.Time) string {
 }
 
 func isAllStar(s string) bool {
+	if s == "" {
+		return false
+	}
 	for _, c := range s {
 		if c != '*' {
 			return false
