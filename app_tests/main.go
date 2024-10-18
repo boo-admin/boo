@@ -70,6 +70,8 @@ func NewTestApp(t testing.TB, params map[string]string) *TestApp {
 	setDefault(params, "db.drv", "postgres")
 	setDefault(params, "db.url", "host=127.0.0.1 port=5432 user=golang password=123456 dbname=golang sslmode=disable")
 
+	setDefault(params, "users.cookie.hash_secret", "xxxx")
+
 	env, err := client.NewEnvironmentWith("boo", "test.properties", params)
 	if err != nil {
 		t.Error("NewEnvironmentWith()", err)

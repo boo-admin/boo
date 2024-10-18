@@ -313,7 +313,12 @@ func (r *ValidationResult) Message(message string, args ...interface{}) *Validat
 	// If translator found, use that to create the message, otherwise call Message method
 	if r.Translator != nil {
 		r.Error.Message = r.Translator(r.Locale, message, args...)
-	} else if len(args) == 0 {
+		if !strings.HasPrefix(r.Error.Message, "???") {
+			return r
+		}
+	}
+
+	if len(args) == 0 {
 		r.Error.Message = message
 	} else {
 		r.Error.Message = fmt.Sprintf(message, args...)

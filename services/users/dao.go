@@ -18,6 +18,21 @@ type DepartmentDao interface {
 	// @default SELECT 1 FROM <tablename type="Department" /> WHERE lower(name) = lower(#{name})  LIMIT 1
 	NameExists(ctx context.Context, name string) (bool, error)
 
+	// @default select count(*) FROM <tablename type="User" as="u" /> WHERE u.department_id = #{id} AND u.deleted_at IS NULL 
+	GetUserCount(ctx context.Context, id int64) (int64, error)
+
+	// @default select count(*) FROM <tablename type="Employee" as="em" /> WHERE em.department_id = #{id} AND em.deleted_at IS NULL
+	GetEmployeeCount(ctx context.Context, id int64) (int64, error)
+
+	// @default UPDATE <tablename type="User" /> SET department_id = NULL WHERE department_id = #{id}
+	UnsetDepartmentForUser(ctx context.Context, id int64) error
+
+	// @default UPDATE <tablename type="Employee" /> SET department_id = NULL WHERE department_id = #{id}
+	UnsetDepartmentForEmployee(ctx context.Context, id int64) error
+
+	// @default UPDATE <tablename type="Department" /> SET parent_id = NULL WHERE parent_id = #{id}
+	UnsetDepartmentForDepartment(ctx context.Context, id int64) error
+
 	Insert(ctx context.Context, department *Department) (int64, error)
 	UpdateByID(ctx context.Context, id int64, department *Department) error
 	DeleteByID(ctx context.Context, id int64) error
@@ -50,13 +65,14 @@ type UserDao interface {
 	UpdateByID(ctx context.Context, id int64, u *User) error
 	// @default UPDATE <tablename /> SET password = #{password}, last_password_modified_at = now() WHERE id = #{id}
 	UpdateUserPassword(ctx context.Context, id int64, password string) error
-	DeleteByID(ctx context.Context, id int64) error
-	DeleteByIDList(ctx context.Context, id []int64) error
+	DeleteByID(ctx context.Context, id int64, force bool) error
+	DeleteByIDList(ctx context.Context, id []int64, force bool) error
 
 	FindByID(ctx context.Context, id int64) (*User, error)
 	FindByName(ctx context.Context, name string) (*User, error)
 	// @default SELECT count(*) from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
 	//   OR nickname like <like value="keyword" />
@@ -65,15 +81,17 @@ type UserDao interface {
 	//   </where>
 	// @mysql SELECT count(*) from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
 	//   OR nickname like <like value="keyword" />
 	//   OR fields->>'$.<print value="constants.user_phone" />' like <like value="keyword" />
 	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
 	//   </where>
-	Count(ctx context.Context, departmentID int64, keyword string) (int64, error)
+	Count(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool) (int64, error)
 	// @default SELECT * from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
 	//   OR nickname like <like value="keyword" />
@@ -84,6 +102,7 @@ type UserDao interface {
 	// <pagination /> <sort_by />
 	// @mysql SELECT * from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
 	//   OR nickname like <like value="keyword" />
@@ -91,7 +110,7 @@ type UserDao interface {
 	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
 	//   </where>
 	// <pagination /> <sort_by />
-	List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]User, error)
+	List(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]User, error)
 	FindByIDList(ctx context.Context, id []int64) ([]User, error)
 }
 
@@ -167,8 +186,8 @@ type EmployeeDao interface {
 	UpdateByID(ctx context.Context, id int64, u *Employee) error
 	// @type update
 	BindToUser(ctx context.Context, id, userID int64) error
-	DeleteByID(ctx context.Context, id int64) error
-	DeleteByIDList(ctx context.Context, id []int64) error
+	DeleteByID(ctx context.Context, id int64, force bool) error
+	DeleteByIDList(ctx context.Context, id []int64, force bool) error
 
 	FindByUserID(ctx context.Context, userid int64) (*Employee, error)
 
@@ -176,6 +195,7 @@ type EmployeeDao interface {
 	FindByName(ctx context.Context, name string) (*Employee, error)
 	// @default SELECT count(*) from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
 	//   OR nickname like <like value="keyword" />
@@ -184,15 +204,18 @@ type EmployeeDao interface {
 	//   </where>
 	// @mysql SELECT count(*) from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
 	//   OR nickname like <like value="keyword" />
 	//   OR fields->>'$.<print value="constants.user_phone" />' like <like value="keyword" />
 	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
 	//   </where>
-	Count(ctx context.Context, departmentID int64, keyword string) (int64, error)
+	Count(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool) (int64, error)
+
 	// @default SELECT * from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
 	//   OR nickname like <like value="keyword" />
@@ -203,6 +226,7 @@ type EmployeeDao interface {
 	// <pagination /> <sort_by />
 	// @mysql SELECT * from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
 	//   OR nickname like <like value="keyword" />
@@ -210,7 +234,7 @@ type EmployeeDao interface {
 	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
 	//   </where>
 	// <pagination /> <sort_by />
-	List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]Employee, error)
+	List(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]Employee, error)
 	FindByIDList(ctx context.Context, id []int64) ([]Employee, error)
 
 	// @default SELECT u.id as user_id, emp.id as employee_id, u.nickname as user_nickname, emp.nickname as employee_nickname, u.department_id as user_department_id, emp.department_id as employee_department_id

@@ -32,8 +32,13 @@ func GenerateCaptcha(store base64Captcha.Store, config CaptchaConfig) (string, s
 	default:
 		driver = config.DriverDigit
 	}
+
 	c := base64Captcha.NewCaptcha(driver, store)
-	return c.Generate()
+
+	// return c.Generate()
+
+	id, base64String, err := c.Generate()
+	return id, base64String, "", err
 }
 
 // base64Captcha create http handler

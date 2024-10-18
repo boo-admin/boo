@@ -133,7 +133,7 @@ func TestUser1(t *testing.T) {
 		t.Error(diff)
 	}
 
-	list, err := users.List(ctx, 0, "", "", 0, 0)
+	list, err := users.List(ctx, 0, "", client.None, nil, "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -144,7 +144,7 @@ func TestUser1(t *testing.T) {
 		t.Error(diff)
 	}
 
-	count, err := users.Count(ctx, 0, "")
+	count, err := users.Count(ctx, 0, "", client.None)
 	if err != nil {
 		t.Error(err)
 		return
@@ -153,13 +153,13 @@ func TestUser1(t *testing.T) {
 		t.Error("want 1 got ", count)
 	}
 
-	err = users.DeleteByID(ctx, userid)
+	err = users.DeleteByID(ctx, userid, true)
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	count, err = users.Count(ctx, 0, "")
+	count, err = users.Count(ctx, 0, "", client.None)
 	if err != nil {
 		t.Error(err)
 		return

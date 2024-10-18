@@ -30,6 +30,7 @@ func NewDepartments(env *client.Environment,
 		env:             env,
 		logger:          env.Logger.WithGroup("departments"),
 		operationLogger: operationLogger,
+		db:              db,
 		dao:             NewDepartmentDaoWith(db.SessionReference()),
 	}, nil
 }
@@ -38,7 +39,7 @@ type departmentService struct {
 	env             *client.Environment
 	logger          *slog.Logger
 	operationLogger OperationLogger
-	// db              *gobatis.SessionFactory
+	db              *gobatis.SessionFactory
 	dao DepartmentDao
 }
 
@@ -138,18 +139,41 @@ func (svc departmentService) DeleteByID(ctx context.Context, id int64) error {
 		return errors.NewOperationReject(authn.OpDeleteDepartment)
 	}
 
-	old, err := svc.dao.FindByID(ctx, id)
-	if err != nil {
-		return errors.Wrap(err, "删除部门时，查询部门 '"+strconv.FormatInt(id, 10)+"' 失败")
+	if userCount, err := svc.dao.GetUserCount(ctx, id); err != nil {
+		return errors.Wrap(err, "判断当前部门是否有用户失败")
+	} else if userCount > 0  {
+		return errors.New("判断当前部门中有 "+strconv.FormatInt(userCount, 10)+" 个用户，不能删除")
+	}
+	if employeeCount, err := svc.dao.GetEmployeeCount(ctx, id); err != nil {
+		return errors.Wrap(err, "判断当前部门是否有员工失败")
+	} else if employeeCount > 0  {
+		return errors.New("判断当前部门中有 "+strconv.FormatInt(employeeCount, 10)+" 个员工，不能删除")
 	}
 
-	err = svc.dao.DeleteByID(ctx, id)
-	if err != nil {
-		return errors.Wrap(err, "删除部门失败")
-	}
+	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
+		if err := svc.dao.UnsetDepartmentForUser(ctx, id); err != nil {
+			return errors.Wrap(err, "从用户列表中删除当前部门失败")
+		}
+		if err := svc.dao.UnsetDepartmentForEmployee(ctx, id); err != nil {
+			return errors.Wrap(err, "从员工列表中删除当前部门失败")
+		}
+		if err := svc.dao.UnsetDepartmentForDepartment(ctx, id); err != nil {
+			return errors.Wrap(err, "取消以当前部门为父节点的节点失败")
+		}
 
-	svc.logDelete(ctx, nil, currentUser, old)
-	return nil
+		old, err := svc.dao.FindByID(ctx, id)
+		if err != nil {
+			return errors.Wrap(err, "删除部门时，查询部门 '"+strconv.FormatInt(id, 10)+"' 失败")
+		}
+
+		err = svc.dao.DeleteByID(ctx, id)
+		if err != nil {
+			return errors.Wrap(err, "删除部门失败")
+		}
+
+		svc.logDelete(ctx, nil, currentUser, old)
+		return nil
+	})
 }
 func (svc departmentService) FindByID(ctx context.Context, id int64) (*Department, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
@@ -234,6 +258,9 @@ func toDepartmentsTree(list []Department) []*Department {
 }
 
 func (svc departmentService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, department *Department) {
+	if !enableOplog {
+		return
+	}
 	records := make([]ChangeRecord, 0, 10)
 	if department.ParentID > 0 {
 		record := ChangeRecord{
@@ -288,6 +315,9 @@ func (svc departmentService) logCreate(ctx context.Context, tx *gobatis.Tx, curr
 }
 
 func (svc departmentService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, department, old *Department) {
+	if !enableOplog {
+		return
+	}
 	records := make([]ChangeRecord, 0, 10)
 	if department.ParentID != old.ParentID {
 		var oldDepart, newDepart string
@@ -373,6 +403,9 @@ func (svc departmentService) logUpdate(ctx context.Context, tx *gobatis.Tx, curr
 }
 
 func (svc departmentService) logDelete(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, oldDepartment *Department) {
+	if !enableOplog {
+		return
+	}
 	oplogger := svc.operationLogger
 	if tx != nil {
 		oplogger = oplogger.WithTx(tx.DB())

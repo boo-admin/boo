@@ -204,7 +204,7 @@ func (svc employeeService) update(ctx context.Context, currentUser authn.AuthUse
 	})
 }
 
-func (svc employeeService) DeleteByID(ctx context.Context, id int64) error {
+func (svc employeeService) DeleteByID(ctx context.Context, id int64, force bool) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -219,17 +219,28 @@ func (svc employeeService) DeleteByID(ctx context.Context, id int64) error {
 	if err != nil {
 		return errors.Wrap(err, "删除员工时，查询员工 '"+strconv.FormatInt(id, 10)+"' 失败")
 	}
+	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
+		if !force {
+			if newName := AddDeleteSuffix(old.Name); newName != old.Name {
+				old.Nickname = AddDeleteSuffix(old.Nickname)
 
-	err = svc.employeeDao.DeleteByID(ctx, id)
-	if err != nil {
-		return errors.Wrap(err, "删除员工失败")
-	}
+				err := svc.employeeDao.UpdateByID(ctx, id, old)
+				if err != nil {
+					return errors.Wrap(err, "删除员工时，更新员工 '"+strconv.FormatInt(id, 10)+"' 的名称失败")
+				}
+			}
+		}
+		err := svc.employeeDao.DeleteByID(ctx, id, force)
+		if err != nil {
+			return errors.Wrap(err, "删除员工失败")
+		}
 
-	svc.logDelete(ctx, nil, currentUser, old)
-	return nil
+		svc.logDelete(ctx, nil, currentUser, old)
+		return nil
+	})
 }
 
-func (svc employeeService) DeleteBatch(ctx context.Context, idlist []int64) error {
+func (svc employeeService) DeleteBatch(ctx context.Context, idlist []int64, force bool) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -250,7 +261,20 @@ func (svc employeeService) DeleteBatch(ctx context.Context, idlist []int64) erro
 	}
 
 	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
-		err = svc.employeeDao.DeleteByIDList(ctx, newList)
+		if !force {
+			for _, old := range oldList {
+				if newName := AddDeleteSuffix(old.Name); newName != old.Name {
+					old.Nickname = AddDeleteSuffix(old.Nickname)
+
+					err = svc.employeeDao.UpdateByID(ctx, old.ID, &old)
+					if err != nil {
+						return errors.Wrap(err, "删除用户时，更新用户 '"+strconv.FormatInt(old.ID, 10)+"' 的名称失败")
+					}
+				}
+			}
+		}
+
+		err = svc.employeeDao.DeleteByIDList(ctx, newList, force)
 		if err != nil {
 			return errors.Wrap(err, "删除员工失败")
 		}
@@ -290,10 +314,10 @@ func (svc employeeService) FindByName(ctx context.Context, name string) (*Employ
 
 	return svc.employeeDao.FindByName(ctx, name)
 }
-func (svc employeeService) Count(ctx context.Context, departmentID int64, keyword string) (int64, error) {
-	return svc.employeeDao.Count(ctx, departmentID, keyword)
+func (svc employeeService) Count(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool) (int64, error) {
+	return svc.employeeDao.Count(ctx, departmentID, keyword, deleted)
 }
-func (svc employeeService) List(ctx context.Context, departmentID int64, keyword string, sort string, offset, limit int64) ([]Employee, error) {
+func (svc employeeService) List(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]Employee, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -304,7 +328,7 @@ func (svc employeeService) List(ctx context.Context, departmentID int64, keyword
 		return nil, errors.NewOperationReject(authn.OpViewEmployee)
 	}
 
-	return svc.employeeDao.List(ctx, departmentID, keyword, sort, offset, limit)
+	return svc.employeeDao.List(ctx, departmentID, keyword, deleted, sort, offset, limit)
 }
 
 func (svc employeeService) PushToUser(ctx context.Context, id int64, password string) (int64, error) {
@@ -516,7 +540,7 @@ func (svc employeeService) Export(ctx context.Context, format string, inline boo
 
 	return importer.WriteHTTP(ctx, "employeeDao", format, inline, writer,
 		importer.RecorderFunc(func(ctx context.Context) (importer.RecordIterator, []string, error) {
-			list, err := svc.employeeDao.List(ctx, 0, "", "", 0, 0)
+			list, err := svc.employeeDao.List(ctx, 0, "", sql.NullBool{Valid: true}, "", 0, 0)
 			if err != nil {
 				return nil, nil, err
 			}

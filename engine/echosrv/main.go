@@ -122,7 +122,7 @@ func Run(srv *boo.Server, prefix, listenAt string) error {
 	}
 	sessionAuth, err := session_auth.New(srv.Env, sessionUser)
 	if err != nil {
-		return errors.Wrap(err, "init jwt auth")
+		return errors.Wrap(err, "init session auth")
 	}
 
 	validator := func(ctx context.Context, req *http.Request, username string, password string) (context.Context, error) {
