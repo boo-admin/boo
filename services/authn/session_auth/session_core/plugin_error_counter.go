@@ -3,7 +3,7 @@ package session_core
 import (
 	"sync"
 
-	"log/slog"
+	"golang.org/x/exp/slog"
 )
 
 type FailCounter interface {
