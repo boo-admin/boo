@@ -20,13 +20,13 @@ type Employee struct {
 	Nickname     string                 `json:"nickname" xorm:"nickname unique notnull"`
 	Description  string                 `json:"description,omitempty" xorm:"description clob null"`
 	Source       string                 `json:"source,omitempty" xorm:"source null"`
-	Disabled     bool                   `json:"disabled,omitempty" xorm:"disabled null"`
 	Fields       map[string]interface{} `json:"fields" xorm:"fields jsonb null"`
 	DeletedAt    *time.Time             `json:"deleted_at,omitempty" xorm:"deleted_at deleted"`
 	CreatedAt    time.Time              `json:"created_at,omitempty" xorm:"created_at created"`
 	UpdatedAt    time.Time              `json:"updated_at,omitempty" xorm:"updated_at updated"`
 
 	Department *Department `json:"department,omitempty" xorm:"-"`
+	Tags       []TagData `json:"tags,omitempty" xorm:"-"`
 }
 
 func (u *Employee) ToUser() *User {
@@ -153,16 +153,18 @@ type Employees interface {
 
 	// @Summary 按关键字查询员工数目，关键字可以是员工名，邮箱以及电话
 	// @Param   department_id      query int                          false        "部门"
+	// @Param   tag                query string                       false        "Tag"
 	// @Param   keyword            query string                       false        "搜索关键字"
 	// @Param   deleted            query sql.NullBool                 false        "指定是否包含删除的用户"
 	// @Accept  json
 	// @Produce json
 	// @Router  /employees/count [get]
 	// @Success 200 {int64} int64  "返回所有员工数目"
-	Count(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool) (int64, error)
+	Count(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool) (int64, error)
 
 	// @Summary 按关键字查询员工，关键字可以是员工名，邮箱以及电话
 	// @Param   department_id      query int                          false        "部门"
+	// @Param   tag                query string                       false        "Tag"
 	// @Param   keyword            query string                       false        "搜索关键字"
 	// @Param   deleted            query sql.NullBool                 false        "指定是否包含删除的用户"
 	// @Param   offset             query int                          false        "offset"
@@ -172,7 +174,7 @@ type Employees interface {
 	// @Produce json
 	// @Router  /employees [get]
 	// @Success 200 {array} Employee  "返回所有员工"
-	List(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]Employee, error)
+	List(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]Employee, error)
 
 	// @Summary  用员工信息新建一个可登录用
 	// @Param    id          path int     true     "员工ID"

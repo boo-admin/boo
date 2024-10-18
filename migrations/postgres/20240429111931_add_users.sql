@@ -30,6 +30,31 @@ CREATE TABLE IF NOT EXISTS boo_user_profiles (
 -- +goose StatementEnd
 
 
+-- +goose StatementBegin
+CREATE TABLE IF NOT EXISTS boo_user_tags (
+    id          bigserial PRIMARY KEY,
+    uuid        varchar(100) NOT NULL,
+    title       varchar(100) NOT NULL,
+    created_at  TIMESTAMP WITH TIME ZONE,
+    updated_at  TIMESTAMP WITH TIME ZONE,
+
+    UNIQUE(uuid),
+    UNIQUE(title)
+);
+-- +goose StatementEnd
+
+
+-- +goose StatementBegin
+CREATE TABLE IF NOT EXISTS boo_user_to_tags (
+    user_id     bigint REFERENCES boo_users ON DELETE CASCADE,
+    tag_id      bigint REFERENCES boo_user_tags ON DELETE CASCADE,
+
+    UNIQUE(user_id, tag_id)
+);
+-- +goose StatementEnd
+
 -- +goose Down
+DROP TABLE IF EXISTS boo_user_to_tags;
 DROP TABLE IF EXISTS boo_user_profiles;
 DROP TABLE IF EXISTS boo_users;
+DROP TABLE IF EXISTS boo_user_tags;

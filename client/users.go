@@ -7,7 +7,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -24,6 +23,13 @@ var (
 	False = sql.NullBool{Valid: true}
 	True = sql.NullBool{Valid: true, Bool: true}
 )
+
+type TagData struct {
+	ID                     int64                  `json:"id" xorm:"id pk autoincr"`
+	Uuid                   string                 `json:"uuid" xorm:"uuid unique notnull"`
+	Title                  string                 `json:"title" xorm:"title unique notnull"`
+}
+
 
 type User struct {
 	TableName              struct{}               `json:"-" xorm:"boo_users"`
@@ -45,6 +51,7 @@ type User struct {
 
 	Department *Department `json:"department,omitempty" xorm:"-"`
 	Roles      []Role      `json:"roles,omitempty" xorm:"-"`
+	Tags       []TagData `json:"tags,omitempty" xorm:"-"`
 }
 
 func (u *User) GetPhone() string {
@@ -192,16 +199,18 @@ type Users interface {
 
 	// @Summary 按关键字查询用户数目，关键字可以是用户名，邮箱以及电话
 	// @Param   department_id      query int                          false        "部门"
+	// @Param   tag                query string                       false        "Tag"
 	// @Param   keyword            query string                       false        "搜索关键字"
 	// @Param   deleted            query sql.NullBool                 false        "指定是否包含删除的用户"
 	// @Accept  json
 	// @Produce json
 	// @Router  /users/count [get]
 	// @Success 200 {int64} int64  "返回所有用户数目"
-	Count(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool) (int64, error)
+	Count(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool) (int64, error)
 
 	// @Summary 按关键字查询用户，关键字可以是用户名，邮箱以及电话
 	// @Param   department_id      query int                          false        "部门"
+	// @Param   tag                query string                       false        "Tag"
 	// @Param   keyword            query string                       false        "搜索关键字"
 	// @Param   deleted            query sql.NullBool                 false        "指定是否包含删除的用户"
 	// @Param   include            query []string                     false        "指定返回的内容"
@@ -212,7 +221,7 @@ type Users interface {
 	// @Produce json
 	// @Router  /users [get]
 	// @Success 200 {array} User  "返回所有用户"
-	List(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool, includes []string, sort string, offset, limit int64) ([]User, error)
+	List(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool, includes []string, sort string, offset, limit int64) ([]User, error)
 }
 
 func NewRemoteUsers(pxy *resty.Proxy) Users {
@@ -250,6 +259,5 @@ func errorFunc(ctx context.Context, req *http.Request, resp *http.Response) rest
 	if err.Code == 0 {
 		err.Code = resp.StatusCode
 	}
-	fmt.Println(cached.String())
 	return &err
 }
