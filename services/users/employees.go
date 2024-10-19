@@ -165,7 +165,7 @@ func (svc employeeService) update(ctx context.Context, currentUser authn.AuthUse
 			newEmployee.Nickname = employee.Nickname
 		}
 		newEmployee.Description = employee.Description
-		newEmployee.Disabled = employee.Disabled
+		// newEmployee.Disabled = employee.Disabled
 
 		if len(employee.Fields) > 0 {
 			if newEmployee.Fields == nil {

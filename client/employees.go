@@ -20,7 +20,6 @@ type Employee struct {
 	Nickname     string                 `json:"nickname" xorm:"nickname unique notnull"`
 	Description  string                 `json:"description,omitempty" xorm:"description clob null"`
 	Source       string                 `json:"source,omitempty" xorm:"source null"`
-	Disabled     bool                   `json:"disabled,omitempty" xorm:"disabled null"`
 	Fields       map[string]interface{} `json:"fields" xorm:"fields jsonb null"`
 	DeletedAt    *time.Time             `json:"deleted_at,omitempty" xorm:"deleted_at deleted"`
 	CreatedAt    time.Time              `json:"created_at,omitempty" xorm:"created_at created"`
