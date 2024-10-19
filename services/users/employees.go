@@ -90,7 +90,6 @@ type employeeService struct {
 	logger          *slog.Logger
 	operationLogger OperationLogger
 	db              *gobatis.SessionFactory
-	toRealDir       func(context.Context, string) string
 
 	enablePasswordCheck bool
 	departmentDao         DepartmentDao
@@ -810,7 +809,7 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 		canCreateDepartment = ok
 	}
 
-	ctx = context.WithValue(ctx, importer.ContextToRealDirKey, svc.toRealDir)
+	ctx = context.WithValue(ctx, importer.ContextToRealDirKey, client.ToRealDirFunc(svc.env))
 	reader, closer, err := importer.ReadHTTP(ctx, request)
 	if err != nil {
 		return err
@@ -1143,6 +1142,95 @@ func (svc employeeService) logDelete(ctx context.Context, tx *gobatis.Tx, curren
 	if err != nil {
 		svc.logger.WarnContext(ctx, "记录删除员工的操作失败", slog.Any("err", err))
 	}
+}
+
+func NewEmployeeTags(env *client.Environment,
+	db *gobatis.SessionFactory,
+	operationLogger OperationLogger) (client.EmployeeTags, error) {
+	sess := db.SessionReference()
+	return &employeeTagService{
+		env:             env,
+		logger:          env.Logger.WithGroup("employees"),
+		operationLogger: operationLogger,
+		db:              db,
+		employeeTagDao:  NewEmployeeTagDaoWith(sess),
+		employee2TagDao:  NewEmployee2TagDaoWith(sess),
+	}, nil
+}
+
+type employeeTagService struct {
+	env             *client.Environment
+	logger          *slog.Logger
+	operationLogger OperationLogger
+	db              *gobatis.SessionFactory
+
+	employeeTagDao      EmployeeTagDao
+	employee2TagDao     Employee2TagDao
+}
+
+func (svc *employeeTagService) fromTag(tag *EmployeeTag) *client.TagData {
+	return &client.TagData{
+		ID: tag.ID,
+		UUID: tag.UUID,
+		Title: tag.Title,
+	}
+}
+
+func (svc *employeeTagService) toTag(tag *client.TagData) *EmployeeTag {
+	return &EmployeeTag{
+		ID: tag.ID,
+		UUID: tag.UUID,
+		Title: tag.Title,
+	}
+}
+
+func (svc *employeeTagService) Create(ctx context.Context, tag *client.TagData) (int64, error) {
+	return svc.employeeTagDao.Insert(ctx, svc.toTag(tag))
+}
+
+func (svc *employeeTagService) UpdateByID(ctx context.Context, id int64, tag *client.TagData) error {
+	return svc.employeeTagDao.UpdateByID(ctx, id, svc.toTag(tag))
+}
+
+func (svc *employeeTagService) DeleteByID(ctx context.Context, id int64) error {
+	if err := svc.employee2TagDao.DeleteByTagID(ctx, id); err != nil {
+		return err
+	}
+	return svc.employeeTagDao.DeleteByID(ctx, id)
+}
+
+func (svc *employeeTagService) DeleteBatch(ctx context.Context, id []int64) error {
+	for _, a := range id {
+		if err := svc.employee2TagDao.DeleteByTagID(ctx, a); err != nil {
+			return err
+		}
+		if err := svc.employeeTagDao.DeleteByID(ctx, a); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (svc *employeeTagService) FindByID(ctx context.Context, id int64) (*client.TagData, error) {
+	tag, err := svc.employeeTagDao.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return svc.fromTag(tag), nil
+}
+
+func (svc *employeeTagService) List(ctx context.Context, sort string, offset, limit int64) ([]client.TagData, error) {
+	tags, err := svc.employeeTagDao.List(ctx, "", sort, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	var results = make([]client.TagData, 0, len(tags))
+	for _, tag := range tags {
+		results = append(results, *svc.fromTag(&tag))
+	}
+	return results, nil
 }
 
 func GetEmployeeAllIncludes() []string {

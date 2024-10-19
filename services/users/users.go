@@ -15,6 +15,7 @@ import (
 	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/goutils/as"
 	"github.com/boo-admin/boo/goutils/importer"
+	"github.com/boo-admin/boo/goutils/tid"
 	"github.com/boo-admin/boo/services/authn"
 	"github.com/boo-admin/boo/validation"
 	gobatis "github.com/runner-mei/GoBatis"
@@ -114,11 +115,11 @@ func NewUsers(env *client.Environment,
 		defaultUsernames: defaultUsernames,
 
 		enablePasswordCheck: enablePasswordCheck,
-		departmentDao:         NewDepartmentDaoWith(sess),
-		userDao:               NewUserDaoWith(sess),
-		roleDao:               NewRoleDaoWith(sess),
+		departmentDao:       NewDepartmentDaoWith(sess),
+		userDao:             NewUserDaoWith(sess),
+		roleDao:             NewRoleDaoWith(sess),
 		user2RoleDao:        NewUser2RoleDaoWith(sess),
-		userTagDao:            NewUserTagDaoWith(sess),
+		userTagDao:          NewUserTagDaoWith(sess),
 		user2TagDao:         NewUser2TagDaoWith(sess),
 		fields:              fields,
 		passwordHasher:      passwordHasher,
@@ -133,11 +134,11 @@ type UserService struct {
 	defaultUsernames []string
 
 	enablePasswordCheck bool
-	departmentDao         DepartmentDao
-	userDao               UserDao
-	roleDao               RoleDao
+	departmentDao       DepartmentDao
+	userDao             UserDao
+	roleDao             RoleDao
 	user2RoleDao        User2RoleDao
-	userTagDao            UserTagDao
+	userTagDao          UserTagDao
 	user2TagDao         User2TagDao
 	fields              []CustomField
 	passwordHasher      UserPasswordHasher
@@ -387,14 +388,33 @@ func (svc UserService) updateRoles(ctx context.Context, id int64, user *User, is
 
 		isNewRole := false
 		if role.ID <= 0 {
-			old, err := svc.roleDao.FindByName(ctx, role.Name)
-			if err != nil {
-				if !errors.Is(err, sql.ErrNoRows) {
-					return nil, errors.Wrap(err, "创建用户时查询关联角色失败")
+			var old *client.Role
+
+			if role.UUID != "" {
+				old, err = svc.roleDao.FindByUUID(ctx, role.UUID)
+				if err != nil {
+					if !errors.Is(err, sql.ErrNoRows) {
+						return nil, errors.Wrap(err, "创建用户时查询关联角色失败")
+					}
 				}
+			} else if role.Title != "" {
+				old, err = svc.roleDao.FindByTitle(ctx, role.Title)
+				if err != nil {
+					if !errors.Is(err, sql.ErrNoRows) {
+						return nil, errors.Wrap(err, "创建用户时查询关联角色失败")
+					}
+				}
+			} else {
+				continue
 			}
 
 			if old == nil {
+				if role.UUID == "" {
+					role.UUID = tid.GenerateID()
+				}
+				if role.Title == "" {
+					role.Title = role.UUID
+				}
 				id, err = svc.roleDao.Insert(ctx, role)
 				if err != nil {
 					return nil, errors.Wrap(err, "创建用户时查询关联角色失败")
@@ -423,11 +443,17 @@ func (svc UserService) updateRoles(ctx context.Context, id int64, user *User, is
 		if err != nil {
 			return nil, errors.Wrap(err, "创建用户时关联角色失败")
 		}
-		if role.Name != "" {
+		if role.Title != "" {
 			contents = append(contents, ChangeRecord{
-				Name:        "addRoleName",
-				DisplayName: "添加关联角色 - '" + role.Name + "'",
-				NewValue:    role.Name,
+				Name:        "addRoleTitle",
+				DisplayName: "添加关联角色 - '" + role.Title + "'",
+				NewValue:    role.Title,
+			})
+		} else if role.UUID != "" {
+			contents = append(contents, ChangeRecord{
+				Name:        "addRoleUUID",
+				DisplayName: "添加关联角色 - '" + role.UUID + "'",
+				NewValue:    role.UUID,
 			})
 		} else {
 			contents = append(contents, ChangeRecord{
@@ -785,7 +811,7 @@ func (svc UserService) List(ctx context.Context, departmentID int64, tag, keywor
 	includes = splitIncludes(includes, GetUserAllIncludes())
 
 	for idx := range list {
-		 _, err := svc.loadUser(ctx, &list[idx], includes)
+		_, err := svc.loadUser(ctx, &list[idx], includes)
 		if err != nil {
 			return nil, err
 		}
@@ -1267,6 +1293,97 @@ func (svc UserService) logDelete(ctx context.Context, tx *gobatis.Tx, currentUse
 	}
 }
 
+func NewUserTags(env *client.Environment,
+	db *gobatis.SessionFactory,
+	operationLogger OperationLogger) (client.UserTags, error) {
+	sess := db.SessionReference()
+	return &userTagService{
+		env:             env,
+		logger:          env.Logger.WithGroup("employees"),
+		operationLogger: operationLogger,
+		db:              db,
+		userTagDao:      NewUserTagDaoWith(sess),
+		user2TagDao:     NewUser2TagDaoWith(sess),
+	}, nil
+}
+
+type userTagService struct {
+	env             *client.Environment
+	logger          *slog.Logger
+	operationLogger OperationLogger
+	db              *gobatis.SessionFactory
+
+	userTagDao      UserTagDao
+	user2TagDao     User2TagDao
+}
+
+func (svc *userTagService) fromTag(tag *UserTag) *client.TagData {
+	return &client.TagData{
+		ID: tag.ID,
+		UUID: tag.UUID,
+		Title: tag.Title,
+	}
+}
+
+func (svc *userTagService) toTag(tag *client.TagData) *UserTag {
+	return &UserTag{
+		ID: tag.ID,
+		UUID: tag.UUID,
+		Title: tag.Title,
+	}
+}
+
+func (svc *userTagService) Create(ctx context.Context, tag *client.TagData) (int64, error) {
+	return svc.userTagDao.Insert(ctx, svc.toTag(tag))
+}
+
+func (svc *userTagService) UpdateByID(ctx context.Context, id int64, tag *client.TagData) error {
+	return svc.userTagDao.UpdateByID(ctx, id, svc.toTag(tag))
+}
+
+
+func (svc *userTagService) DeleteByID(ctx context.Context, id int64) error {
+	if err := svc.user2TagDao.DeleteByTagID(ctx, id); err != nil {
+		return err
+	}
+	return svc.userTagDao.DeleteByID(ctx, id)
+}
+
+func (svc *userTagService) DeleteBatch(ctx context.Context, id []int64) error {
+	for _, a := range id {
+		if err := svc.user2TagDao.DeleteByTagID(ctx, a); err != nil {
+			return err
+		}
+		if err := svc.userTagDao.DeleteByID(ctx, a); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (svc *userTagService) FindByID(ctx context.Context, id int64) (*client.TagData, error) {
+	tag, err := svc.userTagDao.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return svc.fromTag(tag), nil
+}
+
+
+func (svc *userTagService) List(ctx context.Context, sort string, offset, limit int64) ([]client.TagData, error) {
+	tags, err := svc.userTagDao.List(ctx, "", sort, offset, limit)
+	if err != nil {
+		return nil, err
+	}
+
+	var results = make([]client.TagData, 0, len(tags))
+	for _, tag := range tags {
+		results = append(results, *svc.fromTag(&tag))
+	}
+	return results, nil
+}
+
 // func parseTime(s string) (time.Time, error) {
 // 	s = strings.Replace(s, "/", "-", -1)
 
@@ -1356,7 +1473,6 @@ func splitIncludes(includes, allValues []string) []string {
 	}
 	return results
 }
-
 
 func GetUserAllIncludes() []string {
 	return []string{

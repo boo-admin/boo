@@ -78,10 +78,12 @@ func New(srv *boo.Server, prefix string) (*echo.Echo, error) {
 	client.InitOperationQueryer(mux, srv.OperationQueryer)
 	client.InitDepartments(mux, srv.Departments)
 	client.InitUsers(mux, srv.Users)
+	client.InitUserTags(mux, srv.UserTags)
 	users.InitUsersForHTTP(mux, srv.Users)
 	client.InitRoles(mux, srv.Roles)
 	client.InitEmployees(mux, srv.Employees)
 	users.InitEmployeesForHTTP(mux, srv.Employees)
+	client.InitEmployeeTags(mux, srv.EmployeeTags)
 
 	return e, nil
 }

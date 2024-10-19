@@ -30,6 +30,59 @@ type TagData struct {
 	Title string `json:"title" xorm:"title unique notnull"`
 }
 
+type UserTags interface {
+	// @Summary 新建一个用户标签
+	// @Param    tag     body TagData    true     "用户标签"
+	// @Accept   json
+	// @Produce  json
+	// @Router /users/tags [post]
+	// @Success 200 {int64} int64  "成功时返回新建用户标签的ID"
+	Create(ctx context.Context, tag *TagData) (int64, error)
+
+	// @Summary 修改用户标签
+	// @Param    id      path int        true     "用户标签ID"
+	// @Param    tag     body TagData    true     "用户标签信息"
+	// @Accept   json
+	// @Produce  json
+	// @Router /users/tags/{id} [put]
+	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
+	UpdateByID(ctx context.Context, id int64, tag *TagData) error
+
+	// @Summary 删除指定的用户标签
+	// @Param   id            path  int                       true     "用户标签ID"
+	// @Accept  json
+	// @Produce json
+	// @Router  /users/tags/{id} [delete]
+	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
+	DeleteByID(ctx context.Context, id int64) error
+
+	// @Summary 批量删除指定的用户标签
+	// @Param   id            query int64                       true     "用户标签ID"
+	// @Accept  json
+	// @Produce json
+	// @Router  /users/tags/batch [delete]
+	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
+	DeleteBatch(ctx context.Context, id []int64) error
+
+	// @Summary 查询指定的用户标签
+	// @Param   id              path  int                       true     "员工ID"
+	// @Accept  json
+	// @Produce json
+	// @Router  /users/tags/{id} [get]
+	// @Success 200 {object} TagData  "返回指定的用户标签"
+	FindByID(ctx context.Context, id int64) (*TagData, error)
+
+	// @Summary 按关键字查询用户标签
+	// @Param   sort               query string                       false        "排序字段"
+	// @Param   offset             query int                          false        "offset"
+	// @Param   limit              query int                          false        "limit"
+	// @Accept  json
+	// @Produce json
+	// @Router  /users/tags [get]
+	// @Success 200 {array} TagData  "返回所有用户标签"
+	List(ctx context.Context, sort string, offset, limit int64) ([]TagData, error)
+}
+
 type User struct {
 	TableName              struct{}               `json:"-" xorm:"boo_users"`
 	ID                     int64                  `json:"id" xorm:"id pk autoincr"`

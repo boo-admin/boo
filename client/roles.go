@@ -11,7 +11,8 @@ import (
 type Role struct {
 	TableName   struct{}  `json:"-" xorm:"boo_roles"`
 	ID          int64     `json:"id" xorm:"id pk autoincr"`
-	Name        string    `json:"name" xorm:"name unique notnull"`
+	UUID        string    `json:"uuid" xorm:"uuid unique notnull"`
+	Title       string    `json:"title" xorm:"title unique notnull"`
 	Description string    `json:"description,omitempty" xorm:"description clob null"`
 	CreatedAt   time.Time `json:"created_at,omitempty" xorm:"created_at created"`
 	UpdatedAt   time.Time `json:"updated_at,omitempty" xorm:"updated_at updated"`
@@ -54,12 +55,12 @@ type Roles interface {
 	FindByID(ctx context.Context, id int64) (*Role, error)
 
 	// @Summary 按名称查询指定的角色
-	// @Param   name            path string                       true     "角色名称"
+	// @Param   uuid            path string                       true     "角色名称"
 	// @Accept  json
 	// @Produce json
-	// @Router  /roles/by_name/{name} [get]
+	// @Router  /roles/by_name/{uuid} [get]
 	// @Success 200 {array} Role  "返回所有角色"
-	FindByName(ctx context.Context, name string) (*Role, error)
+	FindByUUID(ctx context.Context, uuid string) (*Role, error)
 
 	// @Summary 查询角色数目
 	// @Accept   json

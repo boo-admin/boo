@@ -2,11 +2,13 @@
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS boo_user_roles (
   id                          bigserial PRIMARY KEY,
-  name                        VARCHAR(50),
+  uuid                        VARCHAR(50),
+  title                       VARCHAR(250),
   description                 VARCHAR(250),
   created_at                  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at                  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  unique(name)
+  unique(uuid),
+  unique(title)
 );
 -- +goose StatementEnd
 

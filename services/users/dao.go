@@ -223,20 +223,25 @@ type UserProfile struct {
 // @gobatis.namespace boo
 type RoleDao interface {
 	// @type select
-	// @postgres SELECT true FROM <tablename type="Role" /> WHERE lower(name) = lower(#{name})  LIMIT 1
-	// @default SELECT 1 FROM <tablename type="Role" /> WHERE lower(name) = lower(#{name})  LIMIT 1
-	NameExists(ctx context.Context, name string) (bool, error)
+	// @postgres SELECT true FROM <tablename type="Role" /> WHERE lower(uuid) = lower(#{uuid})  LIMIT 1
+	// @default SELECT 1 FROM <tablename type="Role" /> WHERE lower(uuid) = lower(#{uuid})  LIMIT 1
+	UUIDExists(ctx context.Context, uuid string) (bool, error)
+
+	// @postgres SELECT true FROM <tablename type="Role" /> WHERE lower(title) = lower(#{title})  LIMIT 1
+	// @default SELECT 1 FROM <tablename type="Role" /> WHERE lower(title) = lower(#{title})  LIMIT 1
+	TitleExists(ctx context.Context, title string) (bool, error)
 
 	Insert(ctx context.Context, role *Role) (int64, error)
 	UpdateByID(ctx context.Context, id int64, role *Role) error
 	DeleteByID(ctx context.Context, id int64) error
 	FindByID(ctx context.Context, id int64) (*Role, error)
-	FindByName(ctx context.Context, name string) (*Role, error)
+	FindByUUID(ctx context.Context, uuid string) (*Role, error)
+	FindByTitle(ctx context.Context, title string) (*Role, error)
 	// @default SELECT count(*) from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
-	//   name like <like value="keyword" /> or uuid like <like value="keyword" /> </if>
+	//   uuid like <like value="keyword" /> or title like <like value="keyword" /> </if>
 	Count(ctx context.Context, keyword string) (int64, error)
 	// @default SELECT * from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
-	//   name like <like value="keyword" /> or uuid like <like value="keyword" /> </if>
+	//   uuid like <like value="keyword" /> or title like <like value="keyword" /> </if>
 	// <pagination /> <sort_by />
 	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]Role, error)
 

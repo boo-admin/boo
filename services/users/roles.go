@@ -6,6 +6,7 @@ import (
 
 	"github.com/boo-admin/boo/client"
 	"github.com/boo-admin/boo/errors"
+	"github.com/boo-admin/boo/goutils/tid"
 	"github.com/boo-admin/boo/services/authn"
 	"github.com/boo-admin/boo/validation"
 	gobatis "github.com/runner-mei/GoBatis"
@@ -52,12 +53,19 @@ func (svc roleService) Create(ctx context.Context, role *Role) (int64, error) {
 	}
 
 	v := validation.Default.New()
-	if role.Name == "" {
-		v.Error("name", "无法新建角色 '"+role.Name+"'，该角色名为空")
-	} else if exists, err := svc.dao.NameExists(ctx, role.Name); err != nil {
-		return 0, errors.Wrap(err, "查询角色名 '"+role.Name+"' 是否已存在失败")
+	if role.UUID == "" {
+		role.UUID = tid.GenerateID()
+	} else if exists, err := svc.dao.UUIDExists(ctx, role.UUID); err != nil {
+		return 0, errors.Wrap(err, "查询角色名 '"+role.UUID+"' 是否已存在失败")
 	} else if exists {
-		v.Error("name", "无法新建角色 '"+role.Name+"'，该角色已存在")
+		v.Error("uuid", "无法新建角色 '"+role.UUID+"'，该角色已存在")
+	}
+	if role.Title == "" {
+		v.Error("name", "无法新建角色 '"+role.Title+"'，该角色名为空")
+	} else if exists, err := svc.dao.TitleExists(ctx, role.Title); err != nil {
+		return 0, errors.Wrap(err, "查询角色名 '"+role.Title+"' 是否已存在失败")
+	} else if exists {
+		v.Error("name", "无法新建角色 '"+role.Title+"'，该角色已存在")
 	}
 	if v.HasErrors() {
 		return 0, v.ToError()
@@ -84,8 +92,8 @@ func (svc roleService) UpdateByID(ctx context.Context, id int64, role *Role) err
 	}
 
 	v := validation.Default.New()
-	if role.Name == "" {
-		v.Error("name", "无法新建角色 '"+role.Name+"'，该角色名为空")
+	if role.Title == "" {
+		v.Error("name", "无法更新角色 '"+role.Title+"'，该角色名为空")
 	}
 	if v.HasErrors() {
 		return v.ToError()
@@ -95,11 +103,17 @@ func (svc roleService) UpdateByID(ctx context.Context, id int64, role *Role) err
 	if err != nil {
 		return errors.Wrap(err, "更新角色 '"+strconv.FormatInt(id, 10)+"' 失败")
 	}
-	if role.Name != old.Name {
-		if exists, err := svc.dao.NameExists(ctx, role.Name); err != nil {
-			return errors.Wrap(err, "查询角色名 '"+role.Name+"' 是否已存在失败")
+
+	if role.UUID != "" && role.UUID != old.UUID {
+		v.Error("name", "无法更新角色 '"+role.Title+"'，UUID 不可修改")
+	}
+	role.UUID = old.UUID
+
+	if role.Title != old.Title {
+		if exists, err := svc.dao.TitleExists(ctx, role.Title); err != nil {
+			return errors.Wrap(err, "查询角色名 '"+role.Title+"' 是否已存在失败")
 		} else if exists {
-			v.Error("name", "无法更新角色 '"+role.Name+"'，该角色的新名称已经存在")
+			v.Error("title", "无法更新角色 '"+role.Title+"'，该角色的新名称已经存在")
 		}
 		if v.HasErrors() {
 			return v.ToError()
@@ -153,7 +167,7 @@ func (svc roleService) FindByID(ctx context.Context, id int64) (*Role, error) {
 
 	return svc.dao.FindByID(ctx, id)
 }
-func (svc roleService) FindByName(ctx context.Context, name string) (*Role, error) {
+func (svc roleService) FindByUUID(ctx context.Context, uuid string) (*Role, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -164,7 +178,7 @@ func (svc roleService) FindByName(ctx context.Context, name string) (*Role, erro
 		return nil, errors.NewOperationReject(authn.OpViewRole)
 	}
 
-	return svc.dao.FindByName(ctx, name)
+	return svc.dao.FindByUUID(ctx, uuid)
 }
 func (svc roleService) Count(ctx context.Context, keyword string) (int64, error) {
 	return svc.dao.Count(ctx, keyword)
@@ -186,9 +200,14 @@ func (svc roleService) List(ctx context.Context, keyword string, sort string, of
 func (svc roleService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, role *Role) {
 	records := make([]ChangeRecord, 0, 10)
 	records = append(records, ChangeRecord{
-		Name:        "name",
+		Name:        "uuid",
+		DisplayName: "角色编号",
+		NewValue:    role.Title,
+	})
+	records = append(records, ChangeRecord{
+		Name:        "title",
 		DisplayName: "角色名称",
-		NewValue:    role.Name,
+		NewValue:    role.Title,
 	})
 	records = append(records, ChangeRecord{
 		Name:        "description",
@@ -230,12 +249,12 @@ func (svc roleService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUse
 
 func (svc roleService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, role, old *Role) {
 	records := make([]ChangeRecord, 0, 10)
-	if role.Name != old.Name {
+	if role.Title != old.Title {
 		records = append(records, ChangeRecord{
-			Name:        "name",
+			Name:        "title",
 			DisplayName: "角色名",
-			OldValue:    old.Name,
-			NewValue:    role.Name,
+			OldValue:    old.Title,
+			NewValue:    role.Title,
 		})
 	}
 	if role.Description != old.Description {
@@ -303,7 +322,7 @@ func (svc roleService) logDelete(ctx context.Context, tx *gobatis.Tx, currentUse
 		Username:   currentUser.Nickname(),
 		Successful: true,
 		Type:       authn.OpDeleteRole,
-		Content:    "删除角色 '" + oldRole.Name + "' 成功",
+		Content:    "删除角色 '" + oldRole.Title + "' 成功",
 		Fields: &OperationLogRecord{
 			ObjectType: "role",
 			ObjectID:   oldRole.ID,

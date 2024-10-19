@@ -99,6 +99,59 @@ type UserEmployeeDiff struct {
 	EmployeeDepartmentID int64 `json:"employee_department_id" xorm:"employee_department_id null"`
 }
 
+type EmployeeTags interface {
+	// @Summary 新建一个员工标签
+	// @Param    tag     body TagData    true     "员工标签定义"
+	// @Accept   json
+	// @Produce  json
+	// @Router /employees/tags [post]
+	// @Success 200 {int64} int64  "成功时返回新建员工标签的ID"
+	Create(ctx context.Context, tag *TagData) (int64, error)
+
+	// @Summary 修改员工标签
+	// @Param    id      path int     true     "员工标签ID"
+	// @Param    tag    body TagData    true     "员工标签信息"
+	// @Accept   json
+	// @Produce  json
+	// @Router /employees/tags/{id} [put]
+	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
+	UpdateByID(ctx context.Context, id int64, tag *TagData) error
+
+	// @Summary 删除指定的员工标签
+	// @Param   id            path  int                       true     "员工标签ID"
+	// @Accept  json
+	// @Produce json
+	// @Router  /employees/tags/{id} [delete]
+	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
+	DeleteByID(ctx context.Context, id int64) error
+
+	// @Summary 批量删除指定的员工标签
+	// @Param   id            query int64                       true     "员工标签ID"
+	// @Accept  json
+	// @Produce json
+	// @Router  /employees/tags/batch [delete]
+	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
+	DeleteBatch(ctx context.Context, id []int64) error
+
+	// @Summary 查询指定的员工标签
+	// @Param   id              path  int                       true     "员工标签ID"
+	// @Accept  json
+	// @Produce json
+	// @Router  /employees/tags/{id} [get]
+	// @Success 200 {object} TagData  "返回指定的员工标签"
+	FindByID(ctx context.Context, id int64) (*TagData, error)
+
+	// @Summary 按关键字查询员工标签
+	// @Param   sort               query string                       false        "排序字段"
+	// @Param   offset             query int                          false        "offset"
+	// @Param   limit              query int                          false        "limit"
+	// @Accept  json
+	// @Produce json
+	// @Router  /employees/tags [get]
+	// @Success 200 {array} TagData  "返回所有员工标签"
+	List(ctx context.Context, sort string, offset, limit int64) ([]TagData, error)
+}
+
 type Employees interface {
 	// @Summary 新建一个员工
 	// @Param    employee     body Employee    true     "员工定义"

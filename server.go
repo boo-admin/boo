@@ -19,8 +19,10 @@ type Server struct {
 	OperationQueryer client.OperationQueryer
 	Departments      client.Departments
 	Users            users.Users
+	UserTags         client.UserTags
 	Roles            client.Roles
 	Employees        users.Employees
+	EmployeeTags     client.EmployeeTags
 }
 
 func NewServer(env *client.Environment) (*Server, error) {
@@ -67,6 +69,12 @@ func NewServer(env *client.Environment) (*Server, error) {
 	}
 	srv.Users = usvc
 
+	userTagSvc, err := users.NewUserTags(env, dbFactory, srv.OperationLogger)
+	if err != nil {
+		return nil, err
+	}
+	srv.UserTags = userTagSvc
+
 	rsvc, err := users.NewRoles(env, dbFactory, srv.OperationLogger)
 	if err != nil {
 		return nil, err
@@ -78,6 +86,13 @@ func NewServer(env *client.Environment) (*Server, error) {
 		return nil, err
 	}
 	srv.Employees = employeeSvc
+
+	employeeTagSvc, err := users.NewEmployeeTags(env, dbFactory, srv.OperationLogger)
+	if err != nil {
+		return nil, err
+	}
+	srv.EmployeeTags = employeeTagSvc
+
 	return srv, nil
 }
 
