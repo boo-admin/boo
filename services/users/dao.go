@@ -72,6 +72,8 @@ type UserDao interface {
 	FindByName(ctx context.Context, name string) (*User, error)
 	// @default SELECT count(*) from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id =#{tagID})) AND </if>
+	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id in (select id from <tablename type="UserTag" as="tag" /> where uuid=#{tag})) AND </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
@@ -81,6 +83,8 @@ type UserDao interface {
 	//   </where>
 	// @mysql SELECT count(*) from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id =#{tagID})) AND </if>
+	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id in (select id from <tablename type="UserTag" as="tag" /> where uuid=#{tag})) AND </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
@@ -88,9 +92,11 @@ type UserDao interface {
 	//   OR fields->>'$.<print value="constants.user_phone" />' like <like value="keyword" />
 	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
 	//   </where>
-	Count(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool) (int64, error)
+	Count(ctx context.Context, departmentID int64, tagID int64, tag, keyword string, deleted sql.NullBool) (int64, error)
 	// @default SELECT * from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id =#{tagID})) AND </if>
+	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id in (select id from <tablename type="UserTag" as="tag" /> where uuid=#{tag})) AND </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
@@ -102,6 +108,8 @@ type UserDao interface {
 	// <pagination /> <sort_by />
 	// @mysql SELECT * from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id =#{tagID})) AND </if>
+	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id in (select id from <tablename type="UserTag" as="tag" /> where uuid=#{tag})) AND </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
@@ -110,8 +118,50 @@ type UserDao interface {
 	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
 	//   </where>
 	// <pagination /> <sort_by />
-	List(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]User, error)
+	List(ctx context.Context, departmentID int64, tagID int64, tag, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]User, error)
 	FindByIDList(ctx context.Context, id []int64) ([]User, error)
+}
+
+
+type UserTag struct {
+	TableName              struct{}               `json:"-" xorm:"boo_user_tags"`
+	ID                     int64                  `json:"id" xorm:"id pk autoincr"`
+	Uuid                   string                 `json:"uuid" xorm:"uuid unique notnull"`
+	Title                  string                 `json:"title" xorm:"title unique notnull"`
+	CreatedAt              time.Time              `json:"created_at,omitempty" xorm:"created_at created"`
+	UpdatedAt              time.Time              `json:"updated_at,omitempty" xorm:"updated_at updated"`
+}
+
+type User2Tag struct {
+	TableName              struct{}               `json:"-" xorm:"boo_user_to_tags"`
+	UserID                 int64                  `json:"user_id" xorm:"user_id"`
+	TagID                  int64                  `json:"tag_id" xorm:"tag_id"`
+}
+
+// @gobatis.namespace boo
+type UserTagDao interface {
+	Insert(ctx context.Context, tag *UserTag) (int64, error)
+	UpdateByID(ctx context.Context, id int64, tag *UserTag) error
+	DeleteByID(ctx context.Context, id int64) error
+	FindByID(ctx context.Context, id int64) (*UserTag, error)
+	FindByUUID(ctx context.Context, uuid string) (*UserTag, error)
+
+	// @default SELECT count(*) from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
+	//   uuid like <like value="keyword" /> or title like <like value="keyword" /> </if>
+	Count(ctx context.Context, keyword string) (int64, error)
+	// @default SELECT * from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
+	//   UUID like <like value="keyword" /> or title like <like value="keyword" /> </if>
+	// <pagination /> <sort_by />
+	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]UserTag, error)
+}
+
+// @gobatis.namespace boo
+type User2TagDao interface {
+	// @record_type User2Tag
+	Upsert(ctx context.Context, userID, tagID int64) error
+	Delete(ctx context.Context, userID, tagID int64) error
+	DeleteByUserID(ctx context.Context, userID int64) error
+	DeleteByTagID(ctx context.Context, tagID int64) error
 }
 
 // @gobatis.namespace boo
@@ -195,6 +245,8 @@ type EmployeeDao interface {
 	FindByName(ctx context.Context, name string) (*Employee, error)
 	// @default SELECT count(*) from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id =#{tagID})) AND </if>
+	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id in (select id from <tablename type="Employee2Tag" as="tag" /> where uuid=#{tag})) AND </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
@@ -204,6 +256,8 @@ type EmployeeDao interface {
 	//   </where>
 	// @mysql SELECT count(*) from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id =#{tagID})) AND </if>
+	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id in (select id from <tablename type="Employee2Tag" as="tag" /> where uuid=#{tag})) AND </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
@@ -211,10 +265,12 @@ type EmployeeDao interface {
 	//   OR fields->>'$.<print value="constants.user_phone" />' like <like value="keyword" />
 	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
 	//   </where>
-	Count(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool) (int64, error)
+	Count(ctx context.Context, departmentID int64, tagID int64, tag, keyword string, deleted sql.NullBool) (int64, error)
 
 	// @default SELECT * from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id =#{tagID})) AND </if>
+	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id in (select id from <tablename type="Employee2Tag" as="tag" /> where uuid=#{tag})) AND </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
@@ -226,6 +282,8 @@ type EmployeeDao interface {
 	// <pagination /> <sort_by />
 	// @mysql SELECT * from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id =#{tagID})) AND </if>
+	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id in (select id from <tablename type="Employee2Tag" as="tag" /> where uuid=#{tag})) AND </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
@@ -234,12 +292,54 @@ type EmployeeDao interface {
 	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
 	//   </where>
 	// <pagination /> <sort_by />
-	List(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]Employee, error)
+	List(ctx context.Context, departmentID int64, tagID int64, tag, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]Employee, error)
 	FindByIDList(ctx context.Context, id []int64) ([]Employee, error)
 
 	// @default SELECT u.id as user_id, emp.id as employee_id, u.nickname as user_nickname, emp.nickname as employee_nickname, u.department_id as user_department_id, emp.department_id as employee_department_id
 	// FROM <tablename type="User" alias="u" /> INNER JOIN  <tablename type="Employee" alias="emp" /> ON u.id == emp.user_id
 	GetUserEmployeeDiff(ctx context.Context) ([]client.UserEmployeeDiff, error)
+}
+
+
+type EmployeeTag struct {
+	TableName              struct{}               `json:"-" xorm:"boo_employee_tags"`
+	ID                     int64                  `json:"id" xorm:"id pk autoincr"`
+	Uuid                   string                 `json:"uuid" xorm:"uuid unique notnull"`
+	Title                  string                 `json:"title" xorm:"title unique notnull"`
+	CreatedAt              time.Time              `json:"created_at,omitempty" xorm:"created_at created"`
+	UpdatedAt              time.Time              `json:"updated_at,omitempty" xorm:"updated_at updated"`
+}
+
+type Employee2Tag struct {
+	TableName              struct{}               `json:"-" xorm:"boo_employee_to_tags"`
+	EmployeeID                 int64                  `json:"user_id" xorm:"employee_id"`
+	TagID                  int64                  `json:"tag_id" xorm:"tag_id"`
+}
+
+// @gobatis.namespace boo
+type EmployeeTagDao interface {
+	Insert(ctx context.Context, tag *EmployeeTag) (int64, error)
+	UpdateByID(ctx context.Context, id int64, tag *EmployeeTag) error
+	DeleteByID(ctx context.Context, id int64) error
+	FindByID(ctx context.Context, id int64) (*EmployeeTag, error)
+	FindByUUID(ctx context.Context, uuid string) (*EmployeeTag, error)
+
+	// @default SELECT count(*) from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
+	//   uuid like <like value="keyword" /> or title like <like value="keyword" /> </if>
+	Count(ctx context.Context, keyword string) (int64, error)
+	// @default SELECT * from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
+	//   UUID like <like value="keyword" /> or title like <like value="keyword" /> </if>
+	// <pagination /> <sort_by />
+	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]EmployeeTag, error)
+}
+
+// @gobatis.namespace boo
+type Employee2TagDao interface {
+	// @record_type Employee2Tag
+	Upsert(ctx context.Context, employeeID, tagID int64) error
+	Delete(ctx context.Context, employeeID, tagID int64) error
+	DeleteByEmployeeID(ctx context.Context, employeeID int64) error
+	DeleteByTagID(ctx context.Context, tagID int64) error
 }
 
 func init() {

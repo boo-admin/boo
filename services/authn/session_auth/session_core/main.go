@@ -2,9 +2,10 @@ package session_core
 
 import (
 	"context"
-	"log/slog"
 	"strconv"
 	"strings"
+
+	"golang.org/x/exp/slog"
 )
 
 type User interface {
@@ -21,20 +22,12 @@ type HasRoles interface {
 	RoleNames() []string
 }
 
-// // LockedUser 被锁定的用户
-// type LockedUser struct {
-// 	Name     string
-// 	LockedAt time.Time
-// }
 
 // UserManager 读用户配置的 Handler
 type UserManager interface {
 	Create(ctx context.Context, name, nickname, source, password string, fields map[string]interface{}, roles []string, skipIfRoleNotExists bool) (interface{}, error)
 
 	Read(*AuthContext) (interface{}, User, error)
-	// Lock(*AuthContext) error
-	// Locked(ctx context.Context) ([]LockedUser, error)
-	// Unlock(*AuthContext) error
 }
 
 type LoginResult struct {

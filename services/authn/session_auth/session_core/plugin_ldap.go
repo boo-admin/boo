@@ -3,13 +3,13 @@ package session_core
 import (
 	"crypto/tls"
 	"fmt"
-	"log/slog"
 	"net"
 	"strings"
 
 	"github.com/boo-admin/boo/client"
 	ldap "github.com/go-ldap/ldap/v3"
 	"github.com/mei-rune/iprange"
+	"golang.org/x/exp/slog"
 )
 
 const (

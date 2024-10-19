@@ -314,10 +314,10 @@ func (svc employeeService) FindByName(ctx context.Context, name string) (*Employ
 
 	return svc.employeeDao.FindByName(ctx, name)
 }
-func (svc employeeService) Count(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool) (int64, error) {
-	return svc.employeeDao.Count(ctx, departmentID, keyword, deleted)
+func (svc employeeService) Count(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool) (int64, error) {
+	return svc.employeeDao.Count(ctx, departmentID, 0, tag, keyword, deleted)
 }
-func (svc employeeService) List(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]Employee, error) {
+func (svc employeeService) List(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]Employee, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -328,7 +328,7 @@ func (svc employeeService) List(ctx context.Context, departmentID int64, keyword
 		return nil, errors.NewOperationReject(authn.OpViewEmployee)
 	}
 
-	return svc.employeeDao.List(ctx, departmentID, keyword, deleted, sort, offset, limit)
+	return svc.employeeDao.List(ctx, departmentID, 0, tag, keyword, deleted, sort, offset, limit)
 }
 
 func (svc employeeService) PushToUser(ctx context.Context, id int64, password string) (int64, error) {
@@ -540,7 +540,7 @@ func (svc employeeService) Export(ctx context.Context, format string, inline boo
 
 	return importer.WriteHTTP(ctx, "employeeDao", format, inline, writer,
 		importer.RecorderFunc(func(ctx context.Context) (importer.RecordIterator, []string, error) {
-			list, err := svc.employeeDao.List(ctx, 0, "", sql.NullBool{Valid: true}, "", 0, 0)
+			list, err := svc.employeeDao.List(ctx, 0, 0, "", "", sql.NullBool{Valid: true}, "", 0, 0)
 			if err != nil {
 				return nil, nil, err
 			}

@@ -468,10 +468,10 @@ func (svc UserService) FindByName(ctx context.Context, name string, includes ...
 	svc.processUser(user)
 	return user, nil
 }
-func (svc UserService) Count(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool) (int64, error) {
-	return svc.users.Count(ctx, departmentID, keyword, deleted)
+func (svc UserService) Count(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool) (int64, error) {
+	return svc.users.Count(ctx, departmentID, 0, tag, keyword, deleted)
 }
-func (svc UserService) List(ctx context.Context, departmentID int64, keyword string, deleted sql.NullBool, includes []string, sort string, offset, limit int64) ([]User, error) {
+func (svc UserService) List(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool, includes []string, sort string, offset, limit int64) ([]User, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -482,7 +482,7 @@ func (svc UserService) List(ctx context.Context, departmentID int64, keyword str
 		return nil, errors.NewOperationReject(authn.OpViewUser)
 	}
 
-	list, err := svc.users.List(ctx, departmentID, keyword, deleted, sort, offset, limit)
+	list, err := svc.users.List(ctx, departmentID, 0, tag, keyword, deleted, sort, offset, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -504,7 +504,7 @@ func (svc UserService) Export(ctx context.Context, format string, inline bool, w
 
 	return importer.WriteHTTP(ctx, "users", format, inline, writer,
 		importer.RecorderFunc(func(ctx context.Context) (importer.RecordIterator, []string, error) {
-			list, err := svc.users.List(ctx, 0, "", sql.NullBool{Valid: true}, "", 0, 0)
+			list, err := svc.users.List(ctx, 0, 0, "", "", sql.NullBool{Valid: true}, "", 0, 0)
 			if err != nil {
 				return nil, nil, err
 			}

@@ -16,6 +16,29 @@ CREATE TABLE IF NOT EXISTS boo_employees (
 );
 -- +goose StatementEnd
 
+-- +goose StatementBegin
+CREATE TABLE IF NOT EXISTS boo_employee_tags (
+    id          bigserial PRIMARY KEY,
+    uuid        varchar(100) NOT NULL,
+    title       varchar(100) NOT NULL,
+    created_at  TIMESTAMP WITH TIME ZONE,
+    updated_at  TIMESTAMP WITH TIME ZONE,
+
+    UNIQUE(uuid),
+    UNIQUE(title)
+);
+-- +goose StatementEnd
+
+-- +goose StatementBegin
+CREATE TABLE IF NOT EXISTS boo_employee_to_tags (
+    employee_id     bigint REFERENCES boo_employees ON DELETE CASCADE,
+    tag_id          bigint REFERENCES boo_employee_tags ON DELETE CASCADE,
+
+    UNIQUE(employee_id, tag_id)
+);
+-- +goose StatementEnd
 
 -- +goose Down
+DROP TABLE IF EXISTS boo_employee_to_tags;
 DROP TABLE IF EXISTS boo_employees;
+DROP TABLE IF EXISTS boo_employee_tags;
