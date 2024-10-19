@@ -231,7 +231,7 @@ func (svc employeeService) update(ctx context.Context, currentUser authn.AuthUse
 
 		var contents []ChangeRecord
 		if importEmployee == actionNormal {
-			if contents, err = svc.updateTags(ctx, id, &newEmployee, true); err != nil {
+			if contents, err = svc.updateTags(ctx, id, employee, true); err != nil {
 				return err
 			}
 		}
@@ -250,6 +250,8 @@ func (svc employeeService) updateTags(ctx context.Context, id int64, employee *E
 			return nil, errors.Wrap(err, "更新员工时查询旧 tag 列表失败")
 		}
 	}
+
+	fmt.Println("====", employee.Tags)
 
 	var contents = make([]ChangeRecord, 0, len(employee.Tags))
 	for idx := range employee.Tags {

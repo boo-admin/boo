@@ -578,9 +578,9 @@ func (svc UserService) updateTags(ctx context.Context, id int64, user *User, isU
 
 		err = svc.user2TagDao.Upsert(ctx, id, tag.ID)
 		if err != nil {
-				if isUpdate {
-					return nil, errors.Wrap(err, "更新用户时关联 tag 失败")
-				}
+			if isUpdate {
+				return nil, errors.Wrap(err, "更新用户时关联 tag 失败")
+			}
 			return nil, errors.Wrap(err, "创建用户时关联 tag 失败")
 		}
 		if tag.UUID != "" {
