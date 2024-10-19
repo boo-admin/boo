@@ -160,6 +160,7 @@ type UserTagDao interface {
 	DeleteByID(ctx context.Context, id int64) error
 	FindByID(ctx context.Context, id int64) (*UserTag, error)
 	FindByUUID(ctx context.Context, uuid string) (*UserTag, error)
+	FindByTitle(ctx context.Context, title string) (*UserTag, error)
 
 	// @default SELECT count(*) from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
 	//   uuid like <like value="keyword" /> or title like <like value="keyword" /> </if>
@@ -389,6 +390,7 @@ type EmployeeTagDao interface {
 	DeleteByID(ctx context.Context, id int64) error
 	FindByID(ctx context.Context, id int64) (*EmployeeTag, error)
 	FindByUUID(ctx context.Context, uuid string) (*EmployeeTag, error)
+	FindByTitle(ctx context.Context, title string) (*EmployeeTag, error)
 
 	// @default SELECT count(*) from <tablename /> <if test="isNotEmpty(keyword)"> WHERE
 	//   uuid like <like value="keyword" /> or title like <like value="keyword" /> </if>

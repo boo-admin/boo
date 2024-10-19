@@ -11,6 +11,7 @@ import (
 
 	"github.com/boo-admin/boo/client"
 	"github.com/boo-admin/boo/errors"
+	"github.com/boo-admin/boo/goutils/tid"
 	"github.com/boo-admin/boo/goutils/importer"
 	"github.com/boo-admin/boo/services/authn"
 	"github.com/boo-admin/boo/validation"
@@ -256,18 +257,46 @@ func (svc employeeService) updateTags(ctx context.Context, id int64, employee *E
 
 		isNewTag := false
 		if tag.ID <= 0 {
-			old, err := svc.employeeTagDao.FindByUUID(ctx, tag.UUID)
-			if err != nil {
-				if !errors.Is(err, sql.ErrNoRows) {
-					return nil, errors.Wrap(err, "创建员工时查询关联 tag 失败")
-				}
-			}
-			if old == nil {
-				id, err = svc.employeeTagDao.Insert(ctx, ToEmployeeTagFrom(tag))
+			var old *EmployeeTag
+
+			if tag.UUID != "" {
+				old, err = svc.employeeTagDao.FindByUUID(ctx, tag.UUID)
 				if err != nil {
+					if !errors.Is(err, sql.ErrNoRows) {
+						if isUpdate {
+							return nil, errors.Wrap(err, "更新员工时查询关联 tag 失败")
+						}
+						return nil, errors.Wrap(err, "创建员工时查询关联 tag 失败")
+					}
+				}
+			} else if tag.Title != "" {
+				old, err = svc.employeeTagDao.FindByTitle(ctx, tag.Title)
+				if err != nil {
+					if !errors.Is(err, sql.ErrNoRows) {
+						if isUpdate {
+							return nil, errors.Wrap(err, "更新员工时查询关联 tag 失败")
+						}
+						return nil, errors.Wrap(err, "创建员工时查询关联 tag 失败")
+					}
+				}
+			} else {
+				continue
+			}
+
+			if old == nil {
+				if tag.UUID == "" {
+					tag.UUID = tid.GenerateID()
+				}
+				if tag.Title == "" {
+					tag.Title = tag.UUID
+				}
+				tag.ID, err = svc.employeeTagDao.Insert(ctx, ToEmployeeTagFrom(tag))
+				if err != nil {
+					if isUpdate {
+						return nil, errors.Wrap(err, "更新员工时查询关联 tag 失败")
+					}
 					return nil, errors.Wrap(err, "创建员工时查询关联 tag 失败")
 				}
-				tag.ID = id
 				isNewTag = true
 			} else {
 				tag.ID = old.ID
@@ -289,6 +318,9 @@ func (svc employeeService) updateTags(ctx context.Context, id int64, employee *E
 
 		err = svc.employee2TagDao.Upsert(ctx, id, tag.ID)
 		if err != nil {
+			if isUpdate {
+				return nil, errors.Wrap(err, "更新员工时关联 tag 失败")
+			}
 			return nil, errors.Wrap(err, "创建员工时关联 tag 失败")
 		}
 

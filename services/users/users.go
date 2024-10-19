@@ -394,6 +394,9 @@ func (svc UserService) updateRoles(ctx context.Context, id int64, user *User, is
 				old, err = svc.roleDao.FindByUUID(ctx, role.UUID)
 				if err != nil {
 					if !errors.Is(err, sql.ErrNoRows) {
+						if isUpdate {
+							return nil, errors.Wrap(err, "更新用户时查询关联角色失败")
+						}
 						return nil, errors.Wrap(err, "创建用户时查询关联角色失败")
 					}
 				}
@@ -401,6 +404,9 @@ func (svc UserService) updateRoles(ctx context.Context, id int64, user *User, is
 				old, err = svc.roleDao.FindByTitle(ctx, role.Title)
 				if err != nil {
 					if !errors.Is(err, sql.ErrNoRows) {
+						if isUpdate {
+							return nil, errors.Wrap(err, "更新用户时查询关联角色失败")
+						}
 						return nil, errors.Wrap(err, "创建用户时查询关联角色失败")
 					}
 				}
@@ -415,11 +421,13 @@ func (svc UserService) updateRoles(ctx context.Context, id int64, user *User, is
 				if role.Title == "" {
 					role.Title = role.UUID
 				}
-				id, err = svc.roleDao.Insert(ctx, role)
+				role.ID, err = svc.roleDao.Insert(ctx, role)
 				if err != nil {
+					if isUpdate {
+						return nil, errors.Wrap(err, "更新用户时查询关联角色失败")
+					}
 					return nil, errors.Wrap(err, "创建用户时查询关联角色失败")
 				}
-				role.ID = id
 				isNewRole = true
 			} else {
 				role.ID = old.ID
@@ -441,6 +449,9 @@ func (svc UserService) updateRoles(ctx context.Context, id int64, user *User, is
 
 		err = svc.user2RoleDao.Upsert(ctx, id, role.ID)
 		if err != nil {
+			if isUpdate {
+				return nil, errors.Wrap(err, "更新用户时关联角色失败")
+			}
 			return nil, errors.Wrap(err, "创建用户时关联角色失败")
 		}
 		if role.Title != "" {
@@ -478,7 +489,7 @@ func (svc UserService) updateRoles(ctx context.Context, id int64, user *User, is
 			}
 			err = svc.user2RoleDao.Delete(ctx, old.UserID, old.RoleID)
 			if err != nil {
-				return nil, errors.Wrap(err, "创建用户时删除关联角色失败")
+				return nil, errors.Wrap(err, "更新用户时删除关联角色失败")
 			}
 			contents = append(contents, ChangeRecord{
 				Name:        "deleteRoleID",
@@ -506,18 +517,46 @@ func (svc UserService) updateTags(ctx context.Context, id int64, user *User, isU
 
 		isNewTag := false
 		if tag.ID <= 0 {
-			old, err := svc.userTagDao.FindByUUID(ctx, tag.UUID)
-			if err != nil {
-				if !errors.Is(err, sql.ErrNoRows) {
-					return nil, errors.Wrap(err, "创建用户时查询关联 tag 失败")
-				}
-			}
-			if old == nil {
-				id, err = svc.userTagDao.Insert(ctx, ToUserTagFrom(tag))
+			var old *UserTag
+
+			if tag.UUID != "" {
+				old, err = svc.userTagDao.FindByUUID(ctx, tag.UUID)
 				if err != nil {
-					return nil, errors.Wrap(err, "创建用户时查询关联 tag 失败")
+					if !errors.Is(err, sql.ErrNoRows) {
+						if isUpdate {
+							return nil, errors.Wrap(err, "更新用户时查询关联 tag 失败")
+						}
+						return nil, errors.Wrap(err, "创建用户时查询关联 tag 失败")
+					}
 				}
-				tag.ID = id
+			} else if tag.Title != "" {
+				old, err = svc.userTagDao.FindByTitle(ctx, tag.Title)
+				if err != nil {
+					if !errors.Is(err, sql.ErrNoRows) {
+						if isUpdate {
+							return nil, errors.Wrap(err, "更新用户时查询关联 tag 失败")
+						}
+						return nil, errors.Wrap(err, "创建用户时查询关联 tag 失败")
+					}
+				}
+			} else {
+				continue
+			}
+
+			if old == nil {
+				if tag.UUID == "" {
+					tag.UUID = tid.GenerateID()
+				}
+				if tag.Title == "" {
+					tag.Title = tag.UUID
+				}
+				tag.ID, err = svc.userTagDao.Insert(ctx, ToUserTagFrom(tag))
+				if err != nil {
+					if isUpdate {
+						return nil, errors.Wrap(err, "更新用户时创建关联 tag 失败")
+					}
+					return nil, errors.Wrap(err, "创建用户时创建关联 tag 失败")
+				}
 				isNewTag = true
 			} else {
 				tag.ID = old.ID
@@ -539,6 +578,9 @@ func (svc UserService) updateTags(ctx context.Context, id int64, user *User, isU
 
 		err = svc.user2TagDao.Upsert(ctx, id, tag.ID)
 		if err != nil {
+				if isUpdate {
+					return nil, errors.Wrap(err, "更新用户时关联 tag 失败")
+				}
 			return nil, errors.Wrap(err, "创建用户时关联 tag 失败")
 		}
 		if tag.UUID != "" {
@@ -569,7 +611,7 @@ func (svc UserService) updateTags(ctx context.Context, id int64, user *User, isU
 			}
 			err = svc.user2TagDao.Delete(ctx, old.UserID, old.TagID)
 			if err != nil {
-				return nil, errors.Wrap(err, "创建用户时删除关联 tag 失败")
+				return nil, errors.Wrap(err, "更新用户时删除关联 tag 失败")
 			}
 			contents = append(contents, ChangeRecord{
 				Name:        "deleteTagID",

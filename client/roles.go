@@ -9,7 +9,7 @@ import (
 )
 
 type Role struct {
-	TableName   struct{}  `json:"-" xorm:"boo_roles"`
+	TableName   struct{}  `json:"-" xorm:"boo_user_roles"`
 	ID          int64     `json:"id" xorm:"id pk autoincr"`
 	UUID        string    `json:"uuid" xorm:"uuid unique notnull"`
 	Title       string    `json:"title" xorm:"title unique notnull"`

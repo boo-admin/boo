@@ -9,6 +9,7 @@ import (
 	"github.com/boo-admin/boo/client"
 	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/validation"
+	"github.com/boo-admin/boo/services/users"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -23,6 +24,12 @@ func TestUser1(t *testing.T) {
 		cmpopts.EquateApproxTime(1 * time.Second),
 		// cmpopts.IgnoreFields(notifications.Group{}, "ID", "CreatedAt", "UpdatedAt"),
 		// cmpopts.IgnoreFields(BackupRule{}, "ID", "CreatedAt", "UpdatedAt"),
+
+
+		cmpopts.IgnoreFields(client.Role{}, "ID", "CreatedAt", "UpdatedAt"),
+		cmpopts.IgnoreFields(client.TagData{}, "ID"),
+		cmpopts.IgnoreFields(client.Department{}, "ID", "CreatedAt", "UpdatedAt"),
+		cmpopts.IgnoreFields(users.UserTag{}, "ID", "CreatedAt", "UpdatedAt"),
 	}
 
 	ctx := context.Background()
@@ -62,6 +69,18 @@ func TestUser1(t *testing.T) {
 
 		UpdatedAt: dbnow,
 		CreatedAt: dbnow,
+
+		Tags: []client.TagData{
+			{UUID: "uid1"},
+			{Title: "title2"},
+			{UUID: "uid3", Title: "title3"},
+		},
+
+		Roles: []client.Role{
+			{UUID: "ruid1"},
+			{Title: "rtitle2"},
+			{UUID: "ruid3", Title: "rtitle3"},
+		},
 	}
 
 	userid, err := users.Create(ctx, data)
@@ -92,11 +111,33 @@ func TestUser1(t *testing.T) {
 		return
 	}
 
-	actual, err := users.FindByID(ctx, userid)
+	actual, err := users.FindByID(ctx, userid, "*")
 	if err != nil {
 		t.Error(err)
 		return
 	}
+
+ 	data.Department = &client.Department{
+                       UUID:      "abc",
+                       Name:      "abc",
+               }
+
+  for idx := range data.Tags {
+  	if data.Tags[idx].UUID == "" {
+  		data.Tags[idx].UUID = actual.Tags[idx].UUID
+  	}
+  	if data.Tags[idx].Title == "" {
+  		data.Tags[idx].Title = actual.Tags[idx].Title
+  	}
+  }
+  for idx := range data.Roles {
+  	if data.Roles[idx].UUID == "" {
+  		data.Roles[idx].UUID = actual.Roles[idx].UUID
+  	}
+  	if data.Roles[idx].Title == "" {
+  		data.Roles[idx].Title = actual.Roles[idx].Title
+  	}
+  }
 
 	data.Password = "******"
 	data.ID = userid
@@ -118,7 +159,7 @@ func TestUser1(t *testing.T) {
 		return
 	}
 
-	actual, err = users.FindByID(ctx, userid)
+	actual, err = users.FindByID(ctx, userid, "*")
 	if err != nil {
 		t.Error(err)
 		return
@@ -133,7 +174,7 @@ func TestUser1(t *testing.T) {
 		t.Error(diff)
 	}
 
-	list, err := users.List(ctx, 0, "", "", client.None, nil, "", 0, 0)
+	list, err := users.List(ctx, 0, "", "", client.None, []string{"*"}, "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return
