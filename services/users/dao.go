@@ -18,7 +18,7 @@ type DepartmentDao interface {
 	// @default SELECT 1 FROM <tablename type="Department" /> WHERE lower(name) = lower(#{name})  LIMIT 1
 	NameExists(ctx context.Context, name string) (bool, error)
 
-	// @default select count(*) FROM <tablename type="User" as="u" /> WHERE u.department_id = #{id} AND u.deleted_at IS NULL 
+	// @default select count(*) FROM <tablename type="User" as="u" /> WHERE u.department_id = #{id} AND u.deleted_at IS NULL
 	GetUserCount(ctx context.Context, id int64) (int64, error)
 
 	// @default select count(*) FROM <tablename type="Employee" as="em" /> WHERE em.department_id = #{id} AND em.deleted_at IS NULL
@@ -122,20 +122,35 @@ type UserDao interface {
 	FindByIDList(ctx context.Context, id []int64) ([]User, error)
 }
 
-
 type UserTag struct {
-	TableName              struct{}               `json:"-" xorm:"boo_user_tags"`
-	ID                     int64                  `json:"id" xorm:"id pk autoincr"`
-	Uuid                   string                 `json:"uuid" xorm:"uuid unique notnull"`
-	Title                  string                 `json:"title" xorm:"title unique notnull"`
-	CreatedAt              time.Time              `json:"created_at,omitempty" xorm:"created_at created"`
-	UpdatedAt              time.Time              `json:"updated_at,omitempty" xorm:"updated_at updated"`
+	TableName struct{}  `json:"-" xorm:"boo_user_tags"`
+	ID        int64     `json:"id" xorm:"id pk autoincr"`
+	UUID      string    `json:"uuid" xorm:"uuid unique notnull"`
+	Title     string    `json:"title" xorm:"title unique notnull"`
+	CreatedAt time.Time `json:"created_at,omitempty" xorm:"created_at created"`
+	UpdatedAt time.Time `json:"updated_at,omitempty" xorm:"updated_at updated"`
+}
+
+func (t UserTag) ToTagData() client.TagData {
+	return client.TagData{
+		ID:    t.ID,
+		UUID:  t.UUID,
+		Title: t.Title,
+	}
+}
+
+func ToUserTagFrom(t *client.TagData) *UserTag {
+	return &UserTag{
+		ID:    t.ID,
+		UUID:  t.UUID,
+		Title: t.Title,
+	}
 }
 
 type User2Tag struct {
-	TableName              struct{}               `json:"-" xorm:"boo_user_to_tags"`
-	UserID                 int64                  `json:"user_id" xorm:"user_id"`
-	TagID                  int64                  `json:"tag_id" xorm:"tag_id"`
+	TableName struct{} `json:"-" xorm:"boo_user_to_tags"`
+	UserID    int64    `json:"user_id" xorm:"user_id unique(user_tag)"`
+	TagID     int64    `json:"tag_id" xorm:"tag_id unique(user_tag)"`
 }
 
 // @gobatis.namespace boo
@@ -153,15 +168,23 @@ type UserTagDao interface {
 	//   UUID like <like value="keyword" /> or title like <like value="keyword" /> </if>
 	// <pagination /> <sort_by />
 	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]UserTag, error)
+
+	// @default SELECT id, uuid, title from <tablename type="UserTag" /> where id in (select tag_id from <tablename type="User2Tag" /> where user_id = #{userID})
+	QueryByUserID(ctx context.Context, userID int64) ([]client.TagData, error)
 }
 
 // @gobatis.namespace boo
 type User2TagDao interface {
 	// @record_type User2Tag
 	Upsert(ctx context.Context, userID, tagID int64) error
+	// @record_type User2Tag
 	Delete(ctx context.Context, userID, tagID int64) error
+	// @record_type User2Tag
 	DeleteByUserID(ctx context.Context, userID int64) error
+	// @record_type User2Tag
 	DeleteByTagID(ctx context.Context, tagID int64) error
+
+	QueryByUserID(ctx context.Context, userID int64) ([]User2Tag, error)
 }
 
 // @gobatis.namespace boo
@@ -218,6 +241,29 @@ type RoleDao interface {
 	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]Role, error)
 
 	FindByIDList(ctx context.Context, id []int64) ([]Role, error)
+
+	// @default SELECT * from <tablename type="Role" /> where id in (select role_id from <tablename type="User2Role" /> where user_id = #{userID})
+	QueryByUserID(ctx context.Context, userID int64) ([]Role, error)
+}
+
+type User2Role struct {
+	TableName struct{} `json:"-" xorm:"boo_user_to_roles"`
+	UserID    int64    `json:"user_id" xorm:"user_id unique(user_role)"`
+	RoleID    int64    `json:"role_id" xorm:"role_id unique(user_role)"`
+}
+
+// @gobatis.namespace boo
+type User2RoleDao interface {
+	// @record_type User2Role
+	Upsert(ctx context.Context, userID, roleID int64) error
+	// @record_type User2Role
+	Delete(ctx context.Context, userID, roleID int64) error
+	// @record_type User2Role
+	DeleteByUserID(ctx context.Context, userID int64) error
+	// @record_type User2Role
+	DeleteByRoleID(ctx context.Context, roleID int64) error
+
+	QueryByUserID(ctx context.Context, userID int64) ([]User2Role, error)
 }
 
 // @gobatis.namespace boo
@@ -300,20 +346,35 @@ type EmployeeDao interface {
 	GetUserEmployeeDiff(ctx context.Context) ([]client.UserEmployeeDiff, error)
 }
 
-
 type EmployeeTag struct {
-	TableName              struct{}               `json:"-" xorm:"boo_employee_tags"`
-	ID                     int64                  `json:"id" xorm:"id pk autoincr"`
-	Uuid                   string                 `json:"uuid" xorm:"uuid unique notnull"`
-	Title                  string                 `json:"title" xorm:"title unique notnull"`
-	CreatedAt              time.Time              `json:"created_at,omitempty" xorm:"created_at created"`
-	UpdatedAt              time.Time              `json:"updated_at,omitempty" xorm:"updated_at updated"`
+	TableName struct{}  `json:"-" xorm:"boo_employee_tags"`
+	ID        int64     `json:"id" xorm:"id pk autoincr"`
+	UUID      string    `json:"uuid" xorm:"uuid unique notnull"`
+	Title     string    `json:"title" xorm:"title unique notnull"`
+	CreatedAt time.Time `json:"created_at,omitempty" xorm:"created_at created"`
+	UpdatedAt time.Time `json:"updated_at,omitempty" xorm:"updated_at updated"`
+}
+
+func (t EmployeeTag) ToTagData() client.TagData {
+	return client.TagData{
+		ID:    t.ID,
+		UUID:  t.UUID,
+		Title: t.Title,
+	}
+}
+
+func ToEmployeeTagFrom(t *client.TagData) *EmployeeTag {
+	return &EmployeeTag{
+		ID:    t.ID,
+		UUID:  t.UUID,
+		Title: t.Title,
+	}
 }
 
 type Employee2Tag struct {
-	TableName              struct{}               `json:"-" xorm:"boo_employee_to_tags"`
-	EmployeeID                 int64                  `json:"user_id" xorm:"employee_id"`
-	TagID                  int64                  `json:"tag_id" xorm:"tag_id"`
+	TableName  struct{} `json:"-" xorm:"boo_employee_to_tags"`
+	EmployeeID int64    `json:"user_id" xorm:"employee_id unique(employee_tag)"`
+	TagID      int64    `json:"tag_id" xorm:"tag_id unique(employee_tag)"`
 }
 
 // @gobatis.namespace boo
@@ -331,15 +392,23 @@ type EmployeeTagDao interface {
 	//   UUID like <like value="keyword" /> or title like <like value="keyword" /> </if>
 	// <pagination /> <sort_by />
 	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]EmployeeTag, error)
+
+	// @default SELECT id, uuid, title from <tablename type="EmployeeTag" /> where id in (select tag_id from <tablename type="Employee2Tag" /> where employee_id = #{employeeID})
+	QueryByEmployeeID(ctx context.Context, employeeID int64) ([]client.TagData, error)
 }
 
 // @gobatis.namespace boo
 type Employee2TagDao interface {
 	// @record_type Employee2Tag
 	Upsert(ctx context.Context, employeeID, tagID int64) error
+	// @record_type Employee2Tag
 	Delete(ctx context.Context, employeeID, tagID int64) error
+	// @record_type Employee2Tag
 	DeleteByEmployeeID(ctx context.Context, employeeID int64) error
+	// @record_type Employee2Tag
 	DeleteByTagID(ctx context.Context, tagID int64) error
+
+	QueryByEmployeeID(ctx context.Context, employeeID int64) ([]Employee2Tag, error)
 }
 
 func init() {

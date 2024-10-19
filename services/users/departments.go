@@ -40,7 +40,7 @@ type departmentService struct {
 	logger          *slog.Logger
 	operationLogger OperationLogger
 	db              *gobatis.SessionFactory
-	dao DepartmentDao
+	dao             DepartmentDao
 }
 
 func (svc departmentService) Create(ctx context.Context, department *Department) (int64, error) {
@@ -141,13 +141,13 @@ func (svc departmentService) DeleteByID(ctx context.Context, id int64) error {
 
 	if userCount, err := svc.dao.GetUserCount(ctx, id); err != nil {
 		return errors.Wrap(err, "判断当前部门是否有用户失败")
-	} else if userCount > 0  {
-		return errors.New("判断当前部门中有 "+strconv.FormatInt(userCount, 10)+" 个用户，不能删除")
+	} else if userCount > 0 {
+		return errors.New("判断当前部门中有 " + strconv.FormatInt(userCount, 10) + " 个用户，不能删除")
 	}
 	if employeeCount, err := svc.dao.GetEmployeeCount(ctx, id); err != nil {
 		return errors.Wrap(err, "判断当前部门是否有员工失败")
-	} else if employeeCount > 0  {
-		return errors.New("判断当前部门中有 "+strconv.FormatInt(employeeCount, 10)+" 个员工，不能删除")
+	} else if employeeCount > 0 {
+		return errors.New("判断当前部门中有 " + strconv.FormatInt(employeeCount, 10) + " 个员工，不能删除")
 	}
 
 	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {

@@ -80,7 +80,7 @@ func TestUser1(t *testing.T) {
 			return
 		}
 
-		if errList[0].Key != "Password" { 
+		if errList[0].Key != "Password" {
 			t.Error(errList[0].Code, errList[0].Key, errList[0].Message)
 		}
 	}

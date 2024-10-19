@@ -1,6 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TABLE IF NOT EXISTS boo_roles (
+CREATE TABLE IF NOT EXISTS boo_user_roles (
   id                          bigserial PRIMARY KEY,
   name                        VARCHAR(50),
   description                 VARCHAR(250),
@@ -10,6 +10,15 @@ CREATE TABLE IF NOT EXISTS boo_roles (
 );
 -- +goose StatementEnd
 
+-- +goose StatementBegin
+CREATE TABLE IF NOT EXISTS boo_user_to_roles (
+    user_id          bigint REFERENCES boo_users ON DELETE CASCADE,
+    role_id          bigint REFERENCES boo_user_roles ON DELETE CASCADE,
+
+    UNIQUE(user_id, role_id)
+);
+-- +goose StatementEnd
 
 -- +goose Down
-DROP TABLE IF EXISTS boo_roles;
+DROP TABLE IF EXISTS boo_user_to_roles;
+DROP TABLE IF EXISTS boo_user_roles;

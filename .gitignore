@@ -23,5 +23,6 @@ go.work
 *.old
 *-gen.go
 *.gobatis.go
+*.log
 
 services/docs

@@ -29,6 +29,24 @@ func NewEmployeeDaoWith(ref gobatis.SqlSession) EmployeeDao {
 	return NewEmployeeDao(ref)
 }
 
+var NewEmployeeTagDaoHook func(ref gobatis.SqlSession) EmployeeTagDao
+
+func NewEmployeeTagDaoWith(ref gobatis.SqlSession) EmployeeTagDao {
+	if NewEmployeeTagDaoHook != nil {
+		return NewEmployeeTagDaoHook(ref)
+	}
+	return NewEmployeeTagDao(ref)
+}
+
+var NewEmployee2TagDaoHook func(ref gobatis.SqlSession) Employee2TagDao
+
+func NewEmployee2TagDaoWith(ref gobatis.SqlSession) Employee2TagDao {
+	if NewEmployee2TagDaoHook != nil {
+		return NewEmployee2TagDaoHook(ref)
+	}
+	return NewEmployee2TagDao(ref)
+}
+
 func NewEmployees(env *client.Environment,
 	db *gobatis.SessionFactory,
 	users *UserService,
@@ -58,8 +76,10 @@ func NewEmployees(env *client.Environment,
 		logger:          env.Logger.WithGroup("employees"),
 		operationLogger: operationLogger,
 		db:              db,
+		departmentDao:     NewDepartmentDaoWith(sess),
 		employeeDao:     NewEmployeeDaoWith(sess),
-		departments:     NewDepartmentDaoWith(sess),
+		employeeTagDao:  NewEmployeeTagDaoWith(sess),
+		employee2TagDao: NewEmployee2TagDaoWith(sess),
 		users:           users,
 		fields:          fields,
 	}, nil
@@ -73,8 +93,10 @@ type employeeService struct {
 	toRealDir       func(context.Context, string) string
 
 	enablePasswordCheck bool
+	departmentDao         DepartmentDao
 	employeeDao         EmployeeDao
-	departments         DepartmentDao
+	employeeTagDao      EmployeeTagDao
+	employee2TagDao     Employee2TagDao
 	users               *UserService
 	fields              []CustomField
 }
@@ -122,11 +144,19 @@ func (svc employeeService) insert(ctx context.Context, currentUser authn.AuthUse
 			return err
 		}
 
-		svc.logCreate(ctx, tx, currentUser, id, employee, importEmployee)
+		var contents []ChangeRecord
+		if importEmployee == actionNormal {
+			if contents, err = svc.updateTags(ctx, id, employee, false); err != nil {
+				return err
+			}
+		}
+
+		svc.logCreate(ctx, tx, currentUser, id, employee, importEmployee, contents)
 		return nil
 	})
 	return id, err
 }
+
 func (svc employeeService) UpdateByID(ctx context.Context, id int64, employee *Employee) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
@@ -199,9 +229,109 @@ func (svc employeeService) update(ctx context.Context, currentUser authn.AuthUse
 			return err
 		}
 
-		svc.logUpdate(ctx, tx, currentUser, id, &newEmployee, old, importEmployee)
+		var contents []ChangeRecord
+		if importEmployee == actionNormal {
+			if contents, err = svc.updateTags(ctx, id, &newEmployee, true); err != nil {
+				return err
+			}
+		}
+
+		svc.logUpdate(ctx, tx, currentUser, id, &newEmployee, old, importEmployee, contents)
 		return nil
 	})
+}
+
+func (svc employeeService) updateTags(ctx context.Context, id int64, employee *Employee, isUpdate bool) ([]ChangeRecord, error) {
+	var oldTags []Employee2Tag
+	var err error
+	if isUpdate {
+		oldTags, err = svc.employee2TagDao.QueryByEmployeeID(ctx, id)
+		if err != nil {
+			return nil, errors.Wrap(err, "更新员工时查询旧 tag 列表失败")
+		}
+	}
+
+	var contents = make([]ChangeRecord, 0, len(employee.Tags))
+	for idx := range employee.Tags {
+		tag := &employee.Tags[idx]
+
+		isNewTag := false
+		if tag.ID <= 0 {
+			old, err := svc.employeeTagDao.FindByUUID(ctx, tag.UUID)
+			if err != nil {
+				if !errors.Is(err, sql.ErrNoRows) {
+					return nil, errors.Wrap(err, "创建员工时查询关联 tag 失败")
+				}
+			}
+			if old == nil {
+				id, err = svc.employeeTagDao.Insert(ctx, ToEmployeeTagFrom(tag))
+				if err != nil {
+					return nil, errors.Wrap(err, "创建员工时查询关联 tag 失败")
+				}
+				tag.ID = id
+				isNewTag = true
+			} else {
+				tag.ID = old.ID
+			}
+		}
+
+		if !isNewTag && isUpdate {
+			found := false
+			for _, old := range oldTags {
+				if old.TagID == tag.ID {
+					found = true
+					break
+				}
+			}
+			if found {
+				continue
+			}
+		}
+
+		err = svc.employee2TagDao.Upsert(ctx, id, tag.ID)
+		if err != nil {
+			return nil, errors.Wrap(err, "创建员工时关联 tag 失败")
+		}
+
+		if tag.UUID != "" {
+			contents = append(contents, ChangeRecord{
+				Name:        "addTagUUID",
+				DisplayName: "添加关联 Tag - '" + tag.UUID + "'",
+				NewValue:    tag.UUID,
+			})
+		} else {
+			contents = append(contents, ChangeRecord{
+				Name:        "addTagID",
+				DisplayName: "添加关联 Tag - '" + strconv.FormatInt(tag.ID, 10) + "'",
+				NewValue:    tag.ID,
+			})
+		}
+	}
+	if isUpdate {
+		for _, old := range oldTags {
+			found := false
+			for _, tag := range employee.Tags {
+				if old.TagID == tag.ID {
+					found = true
+					break
+				}
+			}
+			if found {
+				continue
+			}
+			err = svc.employee2TagDao.Delete(ctx, old.EmployeeID, old.TagID)
+			if err != nil {
+				return nil, errors.Wrap(err, "创建员工时删除关联 tag 失败")
+			}
+
+			contents = append(contents, ChangeRecord{
+				Name:        "deleteTagID",
+				DisplayName: "删除关联 tag - '" + strconv.FormatInt(old.TagID, 10) + "'",
+				NewValue:    old.TagID,
+			})
+		}
+	}
+	return contents, nil
 }
 
 func (svc employeeService) DeleteByID(ctx context.Context, id int64, force bool) error {
@@ -268,7 +398,7 @@ func (svc employeeService) DeleteBatch(ctx context.Context, idlist []int64, forc
 
 					err = svc.employeeDao.UpdateByID(ctx, old.ID, &old)
 					if err != nil {
-						return errors.Wrap(err, "删除用户时，更新用户 '"+strconv.FormatInt(old.ID, 10)+"' 的名称失败")
+						return errors.Wrap(err, "删除员工时，更新员工 '"+strconv.FormatInt(old.ID, 10)+"' 的名称失败")
 					}
 				}
 			}
@@ -285,7 +415,7 @@ func (svc employeeService) DeleteBatch(ctx context.Context, idlist []int64, forc
 	})
 }
 
-func (svc employeeService) FindByID(ctx context.Context, id int64) (*Employee, error) {
+func (svc employeeService) FindByID(ctx context.Context, id int64, includes ...string) (*Employee, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -298,9 +428,15 @@ func (svc employeeService) FindByID(ctx context.Context, id int64) (*Employee, e
 		}
 	}
 
-	return svc.employeeDao.FindByID(ctx, id)
+	employee, err := svc.employeeDao.FindByID(ctx, id)
+	if err != nil {
+		return nil, errors.Wrap(err, "查询员工失败")
+	}
+
+	includes = splitIncludes(includes, GetEmployeeAllIncludes())
+	return svc.loadEmployee(ctx, employee, includes)
 }
-func (svc employeeService) FindByName(ctx context.Context, name string) (*Employee, error) {
+func (svc employeeService) FindByName(ctx context.Context, name string, includes ...string) (*Employee, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -312,12 +448,42 @@ func (svc employeeService) FindByName(ctx context.Context, name string) (*Employ
 		return nil, errors.NewOperationReject(authn.OpViewEmployee)
 	}
 
-	return svc.employeeDao.FindByName(ctx, name)
+	employee, err := svc.employeeDao.FindByName(ctx, name)
+	if err != nil {
+		return nil, errors.Wrap(err, "查询员工失败")
+	}
+	
+	includes = splitIncludes(includes, GetEmployeeAllIncludes())
+	return svc.loadEmployee(ctx, employee, includes)
+}
+
+func (svc employeeService) loadEmployee(ctx context.Context, employee *Employee, includes []string) (*Employee, error) {
+	for _, include := range includes {
+		switch include {
+		case "department":
+			if employee.DepartmentID > 0 {
+				department, err := svc.departmentDao.FindByID(ctx, employee.DepartmentID)
+				if err != nil {
+					return nil, errors.Wrap(err, "加载部门失败")
+				}
+				employee.Department = department
+			}
+		case "tag", "tags":
+			tags, err := svc.employeeTagDao.QueryByEmployeeID(ctx, employee.ID)
+			if err != nil {
+				return nil, errors.Wrap(err, "加载 Tag 失败")
+			}
+			employee.Tags = tags
+		default:
+			return nil, errors.WithCode(errors.New("参数 'include' 不正确 - '"+include+"'"), http.StatusBadRequest)
+		}
+	}
+	return employee, nil
 }
 func (svc employeeService) Count(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool) (int64, error) {
 	return svc.employeeDao.Count(ctx, departmentID, 0, tag, keyword, deleted)
 }
-func (svc employeeService) List(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]Employee, error) {
+func (svc employeeService) List(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool, includes []string, sort string, offset, limit int64) ([]Employee, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -328,7 +494,21 @@ func (svc employeeService) List(ctx context.Context, departmentID int64, tag, ke
 		return nil, errors.NewOperationReject(authn.OpViewEmployee)
 	}
 
-	return svc.employeeDao.List(ctx, departmentID, 0, tag, keyword, deleted, sort, offset, limit)
+	list, err := svc.employeeDao.List(ctx, departmentID, 0, tag, keyword, deleted, sort, offset, limit)
+	if err != nil {
+		return nil, errors.Wrap(err, "查询员工列表失败")
+	}
+
+	includes = splitIncludes(includes, GetEmployeeAllIncludes())
+
+	for idx := range list {
+		employee := &list[idx]
+		_, err = svc.loadEmployee(ctx, employee, includes)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return list, nil
 }
 
 func (svc employeeService) PushToUser(ctx context.Context, id int64, password string) (int64, error) {
@@ -456,7 +636,7 @@ func (svc employeeService) SyncWithUsers(ctx context.Context, fromUsers []int64,
 }
 
 func (svc employeeService) syncFromUser(ctx context.Context, currentUser authn.AuthUser, userID int64, createIfNotExist bool) error {
-	user, err := svc.users.users.FindByID(ctx, userID)
+	user, err := svc.users.userDao.FindByID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -486,7 +666,7 @@ func (svc employeeService) syncFromUser(ctx context.Context, currentUser authn.A
 			return err
 		}
 
-		svc.logUpdate(ctx, tx, currentUser, newEmployee.ID, &newEmployee, oldEmployee, actionSync)
+		svc.logUpdate(ctx, tx, currentUser, newEmployee.ID, &newEmployee, oldEmployee, actionSync, nil)
 		return nil
 	})
 }
@@ -508,7 +688,7 @@ func (svc employeeService) syncToUser(ctx context.Context, currentUser authn.Aut
 		// }
 		return errors.Wrap(errors.ErrUnimplemented, "自动创建可登录用户未实现")
 	}
-	oldUser, err := svc.users.users.FindByID(ctx, emp.UserID)
+	oldUser, err := svc.users.userDao.FindByID(ctx, emp.UserID)
 	if err != nil {
 		return err
 	}
@@ -545,7 +725,7 @@ func (svc employeeService) Export(ctx context.Context, format string, inline boo
 				return nil, nil, err
 			}
 			titles := []string{
-				"用户名",
+				"员工名",
 				"中文名",
 				"部门",
 			}
@@ -579,7 +759,7 @@ func (svc employeeService) Export(ctx context.Context, format string, inline boo
 				ReadFunc: func(ctx context.Context) ([]string, error) {
 					department := departmentCache[list[index].DepartmentID]
 					if department == nil {
-						d, err := svc.departments.FindByID(ctx, list[index].DepartmentID)
+						d, err := svc.departmentDao.FindByID(ctx, list[index].DepartmentID)
 						if err != nil {
 							return nil, err
 						}
@@ -644,12 +824,12 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 		record := &Employee{}
 
 		var columns = make([]importer.Column, 0, 5+len(svc.fields))
-		columns = append(columns, importer.StrColumn([]string{"name", "用户", "用户名", "用户名称"}, true,
+		columns = append(columns, importer.StrColumn([]string{"name", "用户", "用户名", "用户名称", "员工", "员工名", "员工名称"}, true,
 			func(ctx context.Context, lineNumber int, origin, value string) error {
 				record.Name = value
 				return nil
 			}))
-		columns = append(columns, importer.StrColumn([]string{"zh_name", "中文名", "姓名"}, false,
+		columns = append(columns, importer.StrColumn([]string{"zh_name", "中文名", "姓名", "呢称"}, false,
 			func(ctx context.Context, lineNumber int, origin, value string) error {
 				record.Nickname = value
 				return nil
@@ -670,7 +850,7 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 
 		columns = append(columns, importer.StrColumn([]string{"department", "部门处室", "部门"}, false,
 			func(ctx context.Context, lineNumber int, origin, value string) error {
-				depart, err := svc.departments.FindByName(ctx, value)
+				depart, err := svc.departmentDao.FindByName(ctx, value)
 				if err != nil {
 					if !errors.IsNotFound(err) {
 						return errors.Wrap(err, origin+" '"+value+"' 查询失败")
@@ -682,7 +862,7 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 					if !canCreateDepartment {
 						return errors.New("没有创建部门的权限，部门 '" + value + "' 不存在")
 					}
-					id, err := svc.departments.Insert(ctx, &Department{
+					id, err := svc.departmentDao.Insert(ctx, &Department{
 						Name: value,
 					})
 					if err != nil {
@@ -726,7 +906,7 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 	})
 }
 
-func (svc employeeService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, employee *Employee, importEmployee int) {
+func (svc employeeService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, employee *Employee, importEmployee int, contents []ChangeRecord) {
 	if !enableOplog {
 		return
 	}
@@ -737,7 +917,7 @@ func (svc employeeService) logCreate(ctx context.Context, tx *gobatis.Tx, curren
 			DisplayName: "部门",
 			NewValue:    employee.DepartmentID,
 		}
-		d, err := svc.departments.FindByID(ctx, employee.DepartmentID)
+		d, err := svc.departmentDao.FindByID(ctx, employee.DepartmentID)
 		if err != nil {
 			svc.logger.WarnContext(ctx, "查询部门失败", slog.Any("err", err))
 		} else if d != nil {
@@ -770,6 +950,10 @@ func (svc employeeService) logCreate(ctx context.Context, tx *gobatis.Tx, curren
 		})
 	}
 
+	if len(contents) > 0 {
+		records = append(records, contents...)
+	}
+
 	typeStr := authn.OpCreateEmployee
 	content := "创建员工成功"
 	switch importEmployee {
@@ -799,7 +983,7 @@ func (svc employeeService) logCreate(ctx context.Context, tx *gobatis.Tx, curren
 	}
 }
 
-func (svc employeeService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, employee, old *Employee, importEmployee int) {
+func (svc employeeService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, employee, old *Employee, importEmployee int, contents []ChangeRecord) {
 	if !enableOplog {
 		return
 	}
@@ -807,7 +991,7 @@ func (svc employeeService) logUpdate(ctx context.Context, tx *gobatis.Tx, curren
 	if employee.DepartmentID != old.DepartmentID {
 		var oldDepart, newDepart string
 		if old.DepartmentID > 0 {
-			d, err := svc.departments.FindByID(ctx, old.DepartmentID)
+			d, err := svc.departmentDao.FindByID(ctx, old.DepartmentID)
 			if err != nil {
 				svc.logger.WarnContext(ctx, "查询部门失败", slog.Any("err", err))
 			} else {
@@ -815,7 +999,7 @@ func (svc employeeService) logUpdate(ctx context.Context, tx *gobatis.Tx, curren
 			}
 		}
 		if employee.DepartmentID > 0 {
-			d, err := svc.departments.FindByID(ctx, employee.DepartmentID)
+			d, err := svc.departmentDao.FindByID(ctx, employee.DepartmentID)
 			if err != nil {
 				svc.logger.WarnContext(ctx, "查询部门失败", slog.Any("err", err))
 			} else {
@@ -882,6 +1066,10 @@ func (svc employeeService) logUpdate(ctx context.Context, tx *gobatis.Tx, curren
 			OldValue:    oldfv,
 			NewValue:    newfv,
 		})
+	}
+
+	if len(contents) > 0 {
+		records = append(records, contents...)
 	}
 
 	typeStr := authn.OpUpdateEmployee
@@ -954,5 +1142,12 @@ func (svc employeeService) logDelete(ctx context.Context, tx *gobatis.Tx, curren
 	})
 	if err != nil {
 		svc.logger.WarnContext(ctx, "记录删除员工的操作失败", slog.Any("err", err))
+	}
+}
+
+func GetEmployeeAllIncludes() []string {
+	return []string{
+		"department",
+		"tag",
 	}
 }

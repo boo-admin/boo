@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS boo_employees (
   name                        varchar(100) NOT NULL UNIQUE,
   nickname                    varchar(100) NOT NULL UNIQUE,
   description                 text,
-  disabled                    boolean,
   source                      varchar(50),
   fields                      jsonb,
   deleted_at                  timestamp WITH TIME ZONE,

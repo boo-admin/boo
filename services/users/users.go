@@ -24,6 +24,12 @@ import (
 	good_password "github.com/mei-rune/go-good-password"
 )
 
+const (
+	actionNormal = iota
+	actionSync
+	actionImport
+)
+
 const DeleteTag = "(deleted:"
 
 func AddDeleteSuffix(name string) string {
@@ -40,6 +46,33 @@ func NewUserDaoWith(ref gobatis.SqlSession) UserDao {
 		return NewUserDaoHook(ref)
 	}
 	return NewUserDao(ref)
+}
+
+var NewUser2RoleDaoHook func(ref gobatis.SqlSession) User2RoleDao
+
+func NewUser2RoleDaoWith(ref gobatis.SqlSession) User2RoleDao {
+	if NewUser2RoleDaoHook != nil {
+		return NewUser2RoleDaoHook(ref)
+	}
+	return NewUser2RoleDao(ref)
+}
+
+var NewUserTagDaoHook func(ref gobatis.SqlSession) UserTagDao
+
+func NewUserTagDaoWith(ref gobatis.SqlSession) UserTagDao {
+	if NewUserTagDaoHook != nil {
+		return NewUserTagDaoHook(ref)
+	}
+	return NewUserTagDao(ref)
+}
+
+var NewUser2TagDaoHook func(ref gobatis.SqlSession) User2TagDao
+
+func NewUser2TagDaoWith(ref gobatis.SqlSession) User2TagDao {
+	if NewUser2TagDaoHook != nil {
+		return NewUser2TagDaoHook(ref)
+	}
+	return NewUser2TagDao(ref)
 }
 
 func NewUsers(env *client.Environment,
@@ -81,8 +114,12 @@ func NewUsers(env *client.Environment,
 		defaultUsernames: defaultUsernames,
 
 		enablePasswordCheck: enablePasswordCheck,
-		users:               NewUserDaoWith(sess),
-		departments:         NewDepartmentDaoWith(sess),
+		departmentDao:         NewDepartmentDaoWith(sess),
+		userDao:               NewUserDaoWith(sess),
+		roleDao:               NewRoleDaoWith(sess),
+		user2RoleDao:        NewUser2RoleDaoWith(sess),
+		userTagDao:            NewUserTagDaoWith(sess),
+		user2TagDao:         NewUser2TagDaoWith(sess),
 		fields:              fields,
 		passwordHasher:      passwordHasher,
 	}, nil
@@ -96,8 +133,12 @@ type UserService struct {
 	defaultUsernames []string
 
 	enablePasswordCheck bool
-	users               UserDao
-	departments         DepartmentDao
+	departmentDao         DepartmentDao
+	userDao               UserDao
+	roleDao               RoleDao
+	user2RoleDao        User2RoleDao
+	userTagDao            UserTagDao
+	user2TagDao         User2TagDao
 	fields              []CustomField
 	passwordHasher      UserPasswordHasher
 }
@@ -163,12 +204,12 @@ func (svc UserService) Create(ctx context.Context, user *User) (int64, error) {
 
 func (svc UserService) insert(ctx context.Context, currentUser authn.AuthUser, user *User, importUser int) (int64, error) {
 	v := validation.Default.New()
-	if exists, err := svc.users.UsernameExists(ctx, user.Name); err != nil {
+	if exists, err := svc.userDao.UsernameExists(ctx, user.Name); err != nil {
 		return 0, errors.Wrap(err, "查询用户名 '"+user.Name+"' 是否已存在失败")
 	} else if exists {
 		v.Error("name", "无法新建用户 '"+user.Name+"'，该用户名已存在")
 	}
-	if exists, err := svc.users.NicknameExists(ctx, user.Nickname); err != nil {
+	if exists, err := svc.userDao.NicknameExists(ctx, user.Nickname); err != nil {
 		return 0, errors.Wrap(err, "查询用户呢称 '"+user.Nickname+"' 是否已存在失败")
 	} else if exists {
 		v.Error("name", "无法新建用户 '"+user.Name+"'，该用户呢称 '"+user.Nickname+"' 已存在")
@@ -186,12 +227,33 @@ func (svc UserService) insert(ctx context.Context, currentUser authn.AuthUser, u
 	var id int64
 	var err error
 	err = svc.db.InTx(ctx, nil, false, func(ctx context.Context, tx *gobatis.Tx) error {
-		id, err = svc.users.Insert(ctx, user)
+		id, err = svc.userDao.Insert(ctx, user)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "创建用户失败")
 		}
+		user.ID = id
 
-		svc.logCreate(ctx, tx, currentUser, id, user, importUser)
+		var contents []ChangeRecord
+		if importUser == actionNormal {
+			var roleContents []ChangeRecord
+			if roleContents, err = svc.updateRoles(ctx, id, user, false); err != nil {
+				return err
+			}
+			var tagContents []ChangeRecord
+			if tagContents, err = svc.updateTags(ctx, id, user, false); err != nil {
+				return err
+			}
+
+			contents = roleContents
+			if len(tagContents) > 0 {
+				if len(contents) == 0 {
+					contents = tagContents
+				} else {
+					contents = append(contents, tagContents...)
+				}
+			}
+		}
+		svc.logCreate(ctx, tx, currentUser, id, user, importUser, contents)
 		return nil
 	})
 	return id, err
@@ -206,7 +268,7 @@ func (svc UserService) UpdateByID(ctx context.Context, id int64, user *User) err
 	} else if !ok {
 		return errors.NewOperationReject(authn.OpUpdateUser)
 	}
-	old, err := svc.users.FindByID(ctx, id)
+	old, err := svc.userDao.FindByID(ctx, id)
 	if err != nil {
 		return errors.Wrap(err, "更新用户 '"+strconv.FormatInt(id, 10)+"' 失败")
 	}
@@ -228,7 +290,7 @@ func (svc UserService) update(ctx context.Context, currentUser authn.AuthUser, i
 		v := validation.Default.New()
 
 		if old.Nickname != user.Nickname {
-			if exists, err := svc.users.NicknameExists(ctx, user.Nickname); err != nil {
+			if exists, err := svc.userDao.NicknameExists(ctx, user.Nickname); err != nil {
 				return errors.Wrap(err, "更新用户时，查询用户呢称 '"+user.Nickname+"' 是否已存在失败")
 			} else if exists {
 				v.Error("name", "无法新建用户 '"+user.Name+"'，该用户呢称 '"+user.Nickname+"' 已存在")
@@ -280,15 +342,219 @@ func (svc UserService) update(ctx context.Context, currentUser authn.AuthUser, i
 		}
 		newUser.Password = old.Password
 
-		err := svc.users.UpdateByID(ctx, id, &newUser)
+		err := svc.userDao.UpdateByID(ctx, id, &newUser)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "更新用户失败")
 		}
 
-		svc.logUpdate(ctx, tx, currentUser, id, &newUser, old, importUser)
+		var contents []ChangeRecord
+		if importUser == actionNormal {
+			var roleContents []ChangeRecord
+			if roleContents, err = svc.updateRoles(ctx, id, user, true); err != nil {
+				return err
+			}
+			var tagContents []ChangeRecord
+			if tagContents, err = svc.updateTags(ctx, id, user, true); err != nil {
+				return err
+			}
+			contents = roleContents
+			if len(tagContents) > 0 {
+				if len(contents) == 0 {
+					contents = tagContents
+				} else {
+					contents = append(contents, tagContents...)
+				}
+			}
+		}
+		svc.logUpdate(ctx, tx, currentUser, id, &newUser, old, importUser, contents)
 		return nil
 	})
 }
+
+func (svc UserService) updateRoles(ctx context.Context, id int64, user *User, isUpdate bool) ([]ChangeRecord, error) {
+	var oldRoles []User2Role
+	var err error
+	if isUpdate {
+		oldRoles, err = svc.user2RoleDao.QueryByUserID(ctx, id)
+		if err != nil {
+			return nil, errors.Wrap(err, "更新用户失败")
+		}
+	}
+
+	var contents = make([]ChangeRecord, 0, len(user.Roles))
+	for idx := range user.Roles {
+		role := &user.Roles[idx]
+
+		isNewRole := false
+		if role.ID <= 0 {
+			old, err := svc.roleDao.FindByName(ctx, role.Name)
+			if err != nil {
+				if !errors.Is(err, sql.ErrNoRows) {
+					return nil, errors.Wrap(err, "创建用户时查询关联角色失败")
+				}
+			}
+
+			if old == nil {
+				id, err = svc.roleDao.Insert(ctx, role)
+				if err != nil {
+					return nil, errors.Wrap(err, "创建用户时查询关联角色失败")
+				}
+				role.ID = id
+				isNewRole = true
+			} else {
+				role.ID = old.ID
+			}
+		}
+
+		if !isNewRole && isUpdate {
+			found := false
+			for _, old := range oldRoles {
+				if old.RoleID == role.ID {
+					found = true
+					break
+				}
+			}
+			if found {
+				continue
+			}
+		}
+
+		err = svc.user2RoleDao.Upsert(ctx, id, role.ID)
+		if err != nil {
+			return nil, errors.Wrap(err, "创建用户时关联角色失败")
+		}
+		if role.Name != "" {
+			contents = append(contents, ChangeRecord{
+				Name:        "addRoleName",
+				DisplayName: "添加关联角色 - '" + role.Name + "'",
+				NewValue:    role.Name,
+			})
+		} else {
+			contents = append(contents, ChangeRecord{
+				Name:        "addRoleID",
+				DisplayName: "添加关联角色 - '" + strconv.FormatInt(role.ID, 10) + "'",
+				NewValue:    role.ID,
+			})
+		}
+	}
+
+	if isUpdate {
+		for _, old := range oldRoles {
+			found := false
+			for _, role := range user.Roles {
+				if old.RoleID == role.ID {
+					found = true
+					break
+				}
+			}
+			if found {
+				continue
+			}
+			err = svc.user2RoleDao.Delete(ctx, old.UserID, old.RoleID)
+			if err != nil {
+				return nil, errors.Wrap(err, "创建用户时删除关联角色失败")
+			}
+			contents = append(contents, ChangeRecord{
+				Name:        "deleteRoleID",
+				DisplayName: "删除关联角色 - '" + strconv.FormatInt(old.RoleID, 10) + "'",
+				NewValue:    old.RoleID,
+			})
+		}
+	}
+	return contents, nil
+}
+
+func (svc UserService) updateTags(ctx context.Context, id int64, user *User, isUpdate bool) ([]ChangeRecord, error) {
+	var oldTags []User2Tag
+	var err error
+	if isUpdate {
+		oldTags, err = svc.user2TagDao.QueryByUserID(ctx, id)
+		if err != nil {
+			return nil, errors.Wrap(err, "更新用户时查询旧 tag 列表失败")
+		}
+	}
+
+	var contents = make([]ChangeRecord, 0, len(user.Tags))
+	for idx := range user.Tags {
+		tag := &user.Tags[idx]
+
+		isNewTag := false
+		if tag.ID <= 0 {
+			old, err := svc.userTagDao.FindByUUID(ctx, tag.UUID)
+			if err != nil {
+				if !errors.Is(err, sql.ErrNoRows) {
+					return nil, errors.Wrap(err, "创建用户时查询关联 tag 失败")
+				}
+			}
+			if old == nil {
+				id, err = svc.userTagDao.Insert(ctx, ToUserTagFrom(tag))
+				if err != nil {
+					return nil, errors.Wrap(err, "创建用户时查询关联 tag 失败")
+				}
+				tag.ID = id
+				isNewTag = true
+			} else {
+				tag.ID = old.ID
+			}
+		}
+
+		if !isNewTag && isUpdate {
+			found := false
+			for _, old := range oldTags {
+				if old.TagID == tag.ID {
+					found = true
+					break
+				}
+			}
+			if found {
+				continue
+			}
+		}
+
+		err = svc.user2TagDao.Upsert(ctx, id, tag.ID)
+		if err != nil {
+			return nil, errors.Wrap(err, "创建用户时关联 tag 失败")
+		}
+		if tag.UUID != "" {
+			contents = append(contents, ChangeRecord{
+				Name:        "addTagUUID",
+				DisplayName: "添加关联 Tag - '" + tag.UUID + "'",
+				NewValue:    tag.UUID,
+			})
+		} else {
+			contents = append(contents, ChangeRecord{
+				Name:        "addTagID",
+				DisplayName: "添加关联 Tag - '" + strconv.FormatInt(tag.ID, 10) + "'",
+				NewValue:    tag.ID,
+			})
+		}
+	}
+	if isUpdate {
+		for _, old := range oldTags {
+			found := false
+			for _, tag := range user.Tags {
+				if old.TagID == tag.ID {
+					found = true
+					break
+				}
+			}
+			if found {
+				continue
+			}
+			err = svc.user2TagDao.Delete(ctx, old.UserID, old.TagID)
+			if err != nil {
+				return nil, errors.Wrap(err, "创建用户时删除关联 tag 失败")
+			}
+			contents = append(contents, ChangeRecord{
+				Name:        "deleteTagID",
+				DisplayName: "删除关联 tag - '" + strconv.FormatInt(old.TagID, 10) + "'",
+				NewValue:    old.TagID,
+			})
+		}
+	}
+	return contents, nil
+}
+
 func (svc UserService) ChangePassword(ctx context.Context, id int64, password string) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
@@ -302,7 +568,7 @@ func (svc UserService) ChangePassword(ctx context.Context, id int64, password st
 		} else if !ok {
 			return errors.NewOperationReject(authn.OpResetPassword)
 		}
-		old, err := svc.users.FindByID(ctx, id)
+		old, err := svc.userDao.FindByID(ctx, id)
 		if err != nil {
 			return errors.Wrap(err, "重置用户密码时，查询用户 '"+strconv.FormatInt(id, 10)+"' 失败")
 		}
@@ -325,7 +591,7 @@ func (svc UserService) resetPassword(ctx context.Context, currentUser authn.Auth
 		password = pwd
 	}
 
-	if err := svc.users.UpdateUserPassword(ctx, id, password); err != nil {
+	if err := svc.userDao.UpdateUserPassword(ctx, id, password); err != nil {
 		return errors.Wrap(err, "修改密码失败")
 	}
 
@@ -344,7 +610,7 @@ func (svc UserService) DeleteByID(ctx context.Context, id int64, force bool) err
 		return errors.NewOperationReject(authn.OpDeleteUser)
 	}
 
-	old, err := svc.users.FindByID(ctx, id)
+	old, err := svc.userDao.FindByID(ctx, id)
 	if err != nil {
 		return errors.Wrap(err, "删除用户时，查询用户 '"+strconv.FormatInt(id, 10)+"' 失败")
 	}
@@ -354,14 +620,14 @@ func (svc UserService) DeleteByID(ctx context.Context, id int64, force bool) err
 			if newName := AddDeleteSuffix(old.Name); newName != old.Name {
 				old.Nickname = AddDeleteSuffix(old.Nickname)
 
-				err := svc.users.UpdateByID(ctx, id, old)
+				err := svc.userDao.UpdateByID(ctx, id, old)
 				if err != nil {
 					return errors.Wrap(err, "删除用户时，更新用户 '"+strconv.FormatInt(id, 10)+"' 的名称失败")
 				}
 			}
 		}
 
-		err := svc.users.DeleteByID(ctx, id, force)
+		err := svc.userDao.DeleteByID(ctx, id, force)
 		if err != nil {
 			return errors.Wrap(err, "删除用户失败")
 		}
@@ -382,7 +648,7 @@ func (svc UserService) DeleteBatch(ctx context.Context, idlist []int64, force bo
 		return errors.NewOperationReject(authn.OpDeleteUser)
 	}
 
-	oldList, err := svc.users.FindByIDList(ctx, idlist)
+	oldList, err := svc.userDao.FindByIDList(ctx, idlist)
 	if err != nil {
 		return errors.Wrap(err, "删除用户时，查询用户失败")
 	}
@@ -397,7 +663,7 @@ func (svc UserService) DeleteBatch(ctx context.Context, idlist []int64, force bo
 				if newName := AddDeleteSuffix(old.Name); newName != old.Name {
 					old.Nickname = AddDeleteSuffix(old.Nickname)
 
-					err = svc.users.UpdateByID(ctx, old.ID, &old)
+					err = svc.userDao.UpdateByID(ctx, old.ID, &old)
 					if err != nil {
 						return errors.Wrap(err, "删除用户时，更新用户 '"+strconv.FormatInt(old.ID, 10)+"' 的名称失败")
 					}
@@ -405,7 +671,7 @@ func (svc UserService) DeleteBatch(ctx context.Context, idlist []int64, force bo
 			}
 		}
 
-		err = svc.users.DeleteByIDList(ctx, newList, force)
+		err = svc.userDao.DeleteByIDList(ctx, newList, force)
 		if err != nil {
 			return errors.Wrap(err, "删除用户失败")
 		}
@@ -429,23 +695,13 @@ func (svc UserService) FindByID(ctx context.Context, id int64, includes ...strin
 		}
 	}
 
-	user, err := svc.users.FindByID(ctx, id)
+	user, err := svc.userDao.FindByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "查询用户失败")
 	}
 
-	svc.processUser(user)
-	return user, nil
-}
-func (svc UserService) processUser(user *User) {
-	user.Password = "******"
-
-	for _, name := range svc.defaultUsernames {
-		if user.Name == name {
-			user.IsDefault = true
-			break
-		}
-	}
+	includes = splitIncludes(includes, GetUserAllIncludes())
+	return svc.loadUser(ctx, user, includes)
 }
 func (svc UserService) FindByName(ctx context.Context, name string, includes ...string) (*User, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
@@ -460,16 +716,55 @@ func (svc UserService) FindByName(ctx context.Context, name string, includes ...
 		}
 	}
 
-	user, err := svc.users.FindByName(ctx, name)
+	user, err := svc.userDao.FindByName(ctx, name)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "查询用户失败")
 	}
 
-	svc.processUser(user)
+	includes = splitIncludes(includes, GetUserAllIncludes())
+	return svc.loadUser(ctx, user, includes)
+}
+
+func (svc UserService) loadUser(ctx context.Context, user *User, includes []string) (*User, error) {
+	user.Password = "******"
+	for _, name := range svc.defaultUsernames {
+		if user.Name == name {
+			user.IsDefault = true
+			break
+		}
+	}
+
+	for _, include := range includes {
+		switch include {
+		case "department":
+			if user.DepartmentID > 0 {
+				department, err := svc.departmentDao.FindByID(ctx, user.DepartmentID)
+				if err != nil {
+					return nil, errors.Wrap(err, "加载部门失败")
+				}
+				user.Department = department
+			}
+		case "tag", "tags":
+			tags, err := svc.userTagDao.QueryByUserID(ctx, user.ID)
+			if err != nil {
+				return nil, errors.Wrap(err, "加载 Tag 失败")
+			}
+			user.Tags = tags
+		case "role", "roles":
+			roles, err := svc.roleDao.QueryByUserID(ctx, user.ID)
+			if err != nil {
+				return nil, errors.Wrap(err, "加载 角色 失败")
+			}
+			user.Roles = roles
+		default:
+			return nil, errors.WithCode(errors.New("参数 'include' 不正确 - '"+include+"'"), http.StatusBadRequest)
+		}
+	}
 	return user, nil
 }
+
 func (svc UserService) Count(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool) (int64, error) {
-	return svc.users.Count(ctx, departmentID, 0, tag, keyword, deleted)
+	return svc.userDao.Count(ctx, departmentID, 0, tag, keyword, deleted)
 }
 func (svc UserService) List(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool, includes []string, sort string, offset, limit int64) ([]User, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
@@ -482,12 +777,18 @@ func (svc UserService) List(ctx context.Context, departmentID int64, tag, keywor
 		return nil, errors.NewOperationReject(authn.OpViewUser)
 	}
 
-	list, err := svc.users.List(ctx, departmentID, 0, tag, keyword, deleted, sort, offset, limit)
+	list, err := svc.userDao.List(ctx, departmentID, 0, tag, keyword, deleted, sort, offset, limit)
 	if err != nil {
 		return nil, err
 	}
+
+	includes = splitIncludes(includes, GetUserAllIncludes())
+
 	for idx := range list {
-		svc.processUser(&list[idx])
+		 _, err := svc.loadUser(ctx, &list[idx], includes)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return list, nil
 }
@@ -504,7 +805,7 @@ func (svc UserService) Export(ctx context.Context, format string, inline bool, w
 
 	return importer.WriteHTTP(ctx, "users", format, inline, writer,
 		importer.RecorderFunc(func(ctx context.Context) (importer.RecordIterator, []string, error) {
-			list, err := svc.users.List(ctx, 0, 0, "", "", sql.NullBool{Valid: true}, "", 0, 0)
+			list, err := svc.userDao.List(ctx, 0, 0, "", "", sql.NullBool{Valid: true}, "", 0, 0)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -543,7 +844,7 @@ func (svc UserService) Export(ctx context.Context, format string, inline bool, w
 				ReadFunc: func(ctx context.Context) ([]string, error) {
 					department := departmentCache[list[index].DepartmentID]
 					if department == nil {
-						d, err := svc.departments.FindByID(ctx, list[index].DepartmentID)
+						d, err := svc.departmentDao.FindByID(ctx, list[index].DepartmentID)
 						if err != nil {
 							return nil, err
 						}
@@ -648,7 +949,7 @@ func (svc UserService) Import(ctx context.Context, request *http.Request) error 
 
 		columns = append(columns, importer.StrColumn([]string{"department", "部门处室", "部门"}, false,
 			func(ctx context.Context, lineNumber int, origin, value string) error {
-				depart, err := svc.departments.FindByName(ctx, value)
+				depart, err := svc.departmentDao.FindByName(ctx, value)
 				if err != nil {
 					if !errors.IsNotFound(err) {
 						return errors.Wrap(err, origin+" '"+value+"' 查询失败")
@@ -660,7 +961,7 @@ func (svc UserService) Import(ctx context.Context, request *http.Request) error 
 					if !canCreateDepartment {
 						return errors.New("没有创建部门的权限，部门 '" + value + "' 不存在")
 					}
-					id, err := svc.departments.Insert(ctx, &Department{
+					id, err := svc.departmentDao.Insert(ctx, &Department{
 						Name: value,
 					})
 					if err != nil {
@@ -676,7 +977,7 @@ func (svc UserService) Import(ctx context.Context, request *http.Request) error 
 		return importer.Row{
 			Columns: columns,
 			Commit: func(ctx context.Context) error {
-				old, err := svc.users.FindByName(ctx, record.Name)
+				old, err := svc.userDao.FindByName(ctx, record.Name)
 				if err != nil && !errors.IsNotFound(err) {
 					return err
 				}
@@ -720,13 +1021,7 @@ func (svc UserService) Import(ctx context.Context, request *http.Request) error 
 	})
 }
 
-const (
-	actionNormal = iota
-	actionSync
-	actionImport
-)
-
-func (svc UserService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, user *User, importUser int) {
+func (svc UserService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, user *User, importUser int, contents []ChangeRecord) {
 	if !enableOplog {
 		return
 	}
@@ -737,7 +1032,7 @@ func (svc UserService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUse
 			DisplayName: "部门",
 			NewValue:    user.DepartmentID,
 		}
-		d, err := svc.departments.FindByID(ctx, user.DepartmentID)
+		d, err := svc.departmentDao.FindByID(ctx, user.DepartmentID)
 		if err != nil {
 			svc.logger.WarnContext(ctx, "查询部门失败", slog.Any("err", err))
 		} else if d != nil {
@@ -770,6 +1065,10 @@ func (svc UserService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUse
 		})
 	}
 
+	if len(contents) > 0 {
+		records = append(records, contents...)
+	}
+
 	typeStr := authn.OpCreateUser
 	content := "创建用户成功"
 	switch importUser {
@@ -799,7 +1098,7 @@ func (svc UserService) logCreate(ctx context.Context, tx *gobatis.Tx, currentUse
 	}
 }
 
-func (svc UserService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, user, old *User, importUser int) {
+func (svc UserService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUser authn.AuthUser, id int64, user, old *User, importUser int, contents []ChangeRecord) {
 	if !enableOplog {
 		return
 	}
@@ -807,7 +1106,7 @@ func (svc UserService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUse
 	if user.DepartmentID != old.DepartmentID {
 		var oldDepart, newDepart string
 		if old.DepartmentID > 0 {
-			d, err := svc.departments.FindByID(ctx, old.DepartmentID)
+			d, err := svc.departmentDao.FindByID(ctx, old.DepartmentID)
 			if err != nil {
 				svc.logger.WarnContext(ctx, "查询部门失败", slog.Any("err", err))
 			} else {
@@ -815,7 +1114,7 @@ func (svc UserService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUse
 			}
 		}
 		if user.DepartmentID > 0 {
-			d, err := svc.departments.FindByID(ctx, user.DepartmentID)
+			d, err := svc.departmentDao.FindByID(ctx, user.DepartmentID)
 			if err != nil {
 				svc.logger.WarnContext(ctx, "查询部门失败", slog.Any("err", err))
 			} else {
@@ -882,6 +1181,10 @@ func (svc UserService) logUpdate(ctx context.Context, tx *gobatis.Tx, currentUse
 			OldValue:    oldfv,
 			NewValue:    newfv,
 		})
+	}
+
+	if len(contents) > 0 {
+		records = append(records, contents...)
 	}
 
 	typeStr := authn.OpUpdateUser
@@ -1033,4 +1336,32 @@ func isAllStar(s string) bool {
 		}
 	}
 	return true
+}
+
+func splitIncludes(includes, allValues []string) []string {
+	var results []string
+	for _, includeData := range includes {
+		ss := strings.Split(includeData, ",")
+		for _, include := range ss {
+			if include == "*" {
+				return allValues
+			}
+
+			include = strings.TrimSpace(include)
+			if include == "" {
+				continue
+			}
+			results = append(results, include)
+		}
+	}
+	return results
+}
+
+
+func GetUserAllIncludes() []string {
+	return []string{
+		"department",
+		"tag",
+		"role",
+	}
 }

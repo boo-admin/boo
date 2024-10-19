@@ -341,6 +341,12 @@ func NewBadArgument(err error, operation, param string, value ...interface{}) er
 	} else {
 		msg = "执行方法 '" + operation + "' 时，参数 '" + param + "' 不正确"
 	}
+	if err == nil {
+		return &EncodeError{
+			Code:    http.StatusBadRequest,
+			Message: msg,
+		}
+	}
 	return &EncodeError{
 		Code:    http.StatusBadRequest,
 		Message: msg + ": " + err.Error(),
@@ -369,7 +375,7 @@ func (err *EncodeError) Error() string {
 }
 
 type ConvertToEncodeError interface {
-	ToEncodeError(code ...int)  *EncodeError
+	ToEncodeError(defaultCode ...int)  *EncodeError
 }
 
 func ToEncodeError(err error, code ...int) *EncodeError {

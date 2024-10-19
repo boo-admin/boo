@@ -19,17 +19,16 @@ import (
 )
 
 var (
-	None = sql.NullBool{}
+	None  = sql.NullBool{}
 	False = sql.NullBool{Valid: true}
-	True = sql.NullBool{Valid: true, Bool: true}
+	True  = sql.NullBool{Valid: true, Bool: true}
 )
 
 type TagData struct {
-	ID                     int64                  `json:"id" xorm:"id pk autoincr"`
-	Uuid                   string                 `json:"uuid" xorm:"uuid unique notnull"`
-	Title                  string                 `json:"title" xorm:"title unique notnull"`
+	ID    int64  `json:"id" xorm:"id pk autoincr"`
+	UUID  string `json:"uuid" xorm:"uuid unique notnull"`
+	Title string `json:"title" xorm:"title unique notnull"`
 }
-
 
 type User struct {
 	TableName              struct{}               `json:"-" xorm:"boo_users"`
@@ -51,7 +50,7 @@ type User struct {
 
 	Department *Department `json:"department,omitempty" xorm:"-"`
 	Roles      []Role      `json:"roles,omitempty" xorm:"-"`
-	Tags       []TagData `json:"tags,omitempty" xorm:"-"`
+	Tags       []TagData   `json:"tags,omitempty" xorm:"-"`
 }
 
 func (u *User) GetPhone() string {
