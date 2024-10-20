@@ -831,8 +831,22 @@ func (svc UserService) loadUser(ctx context.Context, user *User, includes []stri
 	return user, nil
 }
 
+func toIdOrName(s string) (int64, string) {
+	if strings.HasPrefix(s, "@") {
+		a := strings.TrimPrefix(s, "@")
+		i64, err := strconv.ParseInt(a, 10, 64)
+		if err == nil {
+			return i64, ""
+		}
+	}
+	return 0, s
+}
+
 func (svc UserService) Count(ctx context.Context, departmentID int64, role, tag, keyword string, deleted sql.NullBool) (int64, error) {
-	return svc.userDao.Count(ctx, departmentID, 0, role, 0, tag, keyword, deleted)
+	roleID, roleName := toIdOrName(role)
+	tagID, tagName := toIdOrName(tag)
+
+	return svc.userDao.Count(ctx, departmentID, roleID, roleName, tagID, tagName, keyword, deleted)
 }
 func (svc UserService) List(ctx context.Context, departmentID int64, role, tag, keyword string, deleted sql.NullBool, includes []string, sort string, offset, limit int64) ([]User, error) {
 	currentUser, err := authn.ReadUserFromContext(ctx)
@@ -845,7 +859,9 @@ func (svc UserService) List(ctx context.Context, departmentID int64, role, tag, 
 		return nil, errors.NewOperationReject(authn.OpViewUser)
 	}
 
-	list, err := svc.userDao.List(ctx, departmentID, 0, role, 0, tag, keyword, deleted, sort, offset, limit)
+	roleID, roleName := toIdOrName(role)
+	tagID, tagName := toIdOrName(tag)
+	list, err := svc.userDao.List(ctx, departmentID, roleID, roleName, tagID, tagName, keyword, deleted, sort, offset, limit)
 	if err != nil {
 		return nil, err
 	}
