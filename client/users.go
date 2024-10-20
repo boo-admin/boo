@@ -251,6 +251,7 @@ type Users interface {
 
 	// @Summary 按关键字查询用户数目，关键字可以是用户名，邮箱以及电话
 	// @Param   department_id      query int                          false        "部门"
+	// @Param   role               query string                       false        "角色"
 	// @Param   tag                query string                       false        "Tag"
 	// @Param   keyword            query string                       false        "搜索关键字"
 	// @Param   deleted            query sql.NullBool                 false        "指定是否包含删除的用户"
@@ -258,10 +259,11 @@ type Users interface {
 	// @Produce json
 	// @Router  /users/count [get]
 	// @Success 200 {int64} int64  "返回所有用户数目"
-	Count(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool) (int64, error)
+	Count(ctx context.Context, departmentID int64, role, tag, keyword string, deleted sql.NullBool) (int64, error)
 
 	// @Summary 按关键字查询用户，关键字可以是用户名，邮箱以及电话
 	// @Param   department_id      query int                          false        "部门"
+	// @Param   role               query string                       false        "角色"
 	// @Param   tag                query string                       false        "Tag"
 	// @Param   keyword            query string                       false        "搜索关键字"
 	// @Param   deleted            query sql.NullBool                 false        "指定是否包含删除的用户"
@@ -273,7 +275,7 @@ type Users interface {
 	// @Produce json
 	// @Router  /users [get]
 	// @Success 200 {array} User  "返回所有用户"
-	List(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool, includes []string, sort string, offset, limit int64) ([]User, error)
+	List(ctx context.Context, departmentID int64, role, tag, keyword string, deleted sql.NullBool, includes []string, sort string, offset, limit int64) ([]User, error)
 }
 
 func NewRemoteUsers(pxy *resty.Proxy) Users {

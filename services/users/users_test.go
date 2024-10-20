@@ -174,7 +174,7 @@ func TestUser1(t *testing.T) {
 		t.Error(diff)
 	}
 
-	list, err := users.List(ctx, 0, "", "", client.None, []string{"*"}, "", 0, 0)
+	list, err := users.List(ctx, 0, "", "", "", client.None, []string{"*"}, "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -185,7 +185,7 @@ func TestUser1(t *testing.T) {
 		t.Error(diff)
 	}
 
-	count, err := users.Count(ctx, 0, "", "", client.None)
+	count, err := users.Count(ctx, 0, "", "", "", client.None)
 	if err != nil {
 		t.Error(err)
 		return
@@ -200,7 +200,7 @@ func TestUser1(t *testing.T) {
 		return
 	}
 
-	count, err = users.Count(ctx, 0, "", "", client.None)
+	count, err = users.Count(ctx, 0, "", "", "", client.None)
 	if err != nil {
 		t.Error(err)
 		return

@@ -72,6 +72,8 @@ type UserDao interface {
 	FindByName(ctx context.Context, name string) (*User, error)
 	// @default SELECT count(*) from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="roleID &gt; 0" >id in (select user_id from <tablename type="User2Role" as="u2r" /> where u2r.role_id =#{roleID})) AND </if>
+	//   <if test="isNotEmpty(role)" >id in (select user_id from <tablename type="User2Role" as="u2r" /> where u2r.role_id in (select id from <tablename type="Role" /> where uuid=#{role})) AND </if>
 	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id =#{tagID})) AND </if>
 	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id in (select id from <tablename type="UserTag" as="tag" /> where uuid=#{tag})) AND </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
@@ -83,6 +85,8 @@ type UserDao interface {
 	//   </where>
 	// @mysql SELECT count(*) from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="roleID &gt; 0" >id in (select user_id from <tablename type="User2Role" as="u2r" /> where u2r.role_id =#{roleID})) AND </if>
+	//   <if test="isNotEmpty(role)" >id in (select user_id from <tablename type="User2Role" as="u2r" /> where u2r.role_id in (select id from <tablename type="Role" /> where uuid=#{role})) AND </if>
 	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id =#{tagID})) AND </if>
 	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id in (select id from <tablename type="UserTag" as="tag" /> where uuid=#{tag})) AND </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
@@ -92,11 +96,13 @@ type UserDao interface {
 	//   OR fields->>'$.<print value="constants.user_phone" />' like <like value="keyword" />
 	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
 	//   </where>
-	Count(ctx context.Context, departmentID int64, tagID int64, tag, keyword string, deleted sql.NullBool) (int64, error)
+	Count(ctx context.Context, departmentID int64, roleID int64, role string, tagID int64, tag, keyword string, deleted sql.NullBool) (int64, error)
 	// @default SELECT * from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="roleID &gt; 0" >id in (select user_id from <tablename type="User2Role" as="u2r" /> where u2r.role_id =#{roleID})) AND </if>
+	//   <if test="isNotEmpty(role)" >id in (select user_id from <tablename type="User2Role" as="u2r" /> where u2r.role_id in (select id from <tablename type="Role" /> where uuid=#{role})) AND </if>
 	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id =#{tagID})) AND </if>
-	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id in (select id from <tablename type="UserTag" as="tag" /> where uuid=#{tag})) AND </if>
+	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id in (select id from <tablename type="UserTag" /> where uuid=#{tag})) AND </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
@@ -108,6 +114,8 @@ type UserDao interface {
 	// <pagination /> <sort_by />
 	// @mysql SELECT * from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
+	//   <if test="roleID &gt; 0" >id in (select user_id from <tablename type="User2Role" as="u2r" /> where u2r.role_id =#{roleID})) AND </if>
+	//   <if test="isNotEmpty(role)" >id in (select user_id from <tablename type="User2Role" as="u2r" /> where u2r.role_id in (select id from <tablename type="Role" /> where uuid=#{role})) AND </if>
 	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id =#{tagID})) AND </if>
 	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="User2Tag" as="u2t" /> where u2t.tag_id in (select id from <tablename type="UserTag" as="tag" /> where uuid=#{tag})) AND </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
@@ -118,7 +126,7 @@ type UserDao interface {
 	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
 	//   </where>
 	// <pagination /> <sort_by />
-	List(ctx context.Context, departmentID int64, tagID int64, tag, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]User, error)
+	List(ctx context.Context, departmentID int64, roleID int64, role string, tagID int64, tag, keyword string, deleted sql.NullBool, sort string, offset, limit int64) ([]User, error)
 	FindByIDList(ctx context.Context, id []int64) ([]User, error)
 }
 
