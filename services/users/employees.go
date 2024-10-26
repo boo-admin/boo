@@ -157,7 +157,7 @@ func (svc employeeService) insert(ctx context.Context, currentUser authn.AuthUse
 	return id, err
 }
 
-func (svc employeeService) UpdateByID(ctx context.Context, id int64, employee *Employee) error {
+func (svc employeeService) UpdateByID(ctx context.Context, id int64, employee *Employee, mode client.UpdateMode) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -171,10 +171,10 @@ func (svc employeeService) UpdateByID(ctx context.Context, id int64, employee *E
 	if err != nil {
 		return errors.Wrap(err, "更新员工 '"+strconv.FormatInt(id, 10)+"' 失败")
 	}
-	return svc.update(ctx, currentUser, id, employee, old, actionNormal)
+	return svc.update(ctx, currentUser, id, employee, old, mode, actionNormal)
 }
 
-func (svc employeeService) update(ctx context.Context, currentUser authn.AuthUser, id int64, employee, old *Employee, importEmployee int) error {
+func (svc employeeService) update(ctx context.Context, currentUser authn.AuthUser, id int64, employee, old *Employee, mode client.UpdateMode, importEmployee int) error {
 	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
 		if old.Name != employee.Name {
 			return errors.New("更新员工失败，员工名不可修改")
@@ -230,12 +230,19 @@ func (svc employeeService) update(ctx context.Context, currentUser authn.AuthUse
 		}
 
 		var contents []ChangeRecord
-		if importEmployee == actionNormal {
+		switch mode {
+		case client.UpdateModeOverride:
 			if contents, err = svc.updateTags(ctx, id, employee, true); err != nil {
 				return err
 			}
+		case client.UpdateModeAdd:
+			if contents, err = svc.updateTags(ctx, id, employee, false); err != nil {
+				return err
+			}
+		case client.UpdateModeSkip:
+		default:
+			return errors.New("不可识别的更新模式 - " + mode.String())
 		}
-
 		svc.logUpdate(ctx, tx, currentUser, id, &newEmployee, old, importEmployee, contents)
 		return nil
 	})
@@ -250,8 +257,6 @@ func (svc employeeService) updateTags(ctx context.Context, id int64, employee *E
 			return nil, errors.Wrap(err, "更新员工时查询旧 tag 列表失败")
 		}
 	}
-
-	fmt.Println("====", employee.Tags)
 
 	var contents = make([]ChangeRecord, 0, len(employee.Tags))
 	for idx := range employee.Tags {
@@ -732,7 +737,7 @@ func (svc employeeService) syncToUser(ctx context.Context, currentUser authn.Aut
 	newUser.DepartmentID = emp.DepartmentID
 
 	return svc.db.InTx(ctx, nil, true, func(ctx context.Context, tx *gobatis.Tx) error {
-		return svc.users.update(ctx, currentUser, newUser.ID, &newUser, oldUser, actionSync)
+		return svc.users.update(ctx, currentUser, newUser.ID, &newUser, oldUser, client.UpdateModeSkip, actionSync)
 	})
 }
 
@@ -919,7 +924,7 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 					if override {
 						err = errors.New("员工 '" + record.Name + "' 已存在")
 					} else if canUpdate {
-						err = svc.update(ctx, currentUser, old.ID, record, old, actionImport)
+						err = svc.update(ctx, currentUser, old.ID, record, old, client.UpdateModeSkip, actionImport)
 					} else {
 						err = errors.New("没有更新员工的权限，员工 '" + record.Name + "' 没有更新")
 					}

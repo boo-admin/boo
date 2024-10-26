@@ -1,5 +1,5 @@
-//go:generate gogenv2 server -ext=.server-gen.go users.go
-//go:generate gogenv2 client -ext=.client-gen.go users.go
+//go:generate gogenv2 server -convert_param_types=UpdateMode -ext=.server-gen.go users.go
+//go:generate gogenv2 client -convert_param_types=UpdateMode -ext=.client-gen.go users.go
 
 package client
 
@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"fmt"
 
 	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/goutils/as"
@@ -23,6 +24,38 @@ var (
 	False = sql.NullBool{Valid: true}
 	True  = sql.NullBool{Valid: true, Bool: true}
 )
+
+type UpdateMode int
+
+const (
+	UpdateModeOverride UpdateMode = iota
+	UpdateModeAdd
+	UpdateModeSkip
+)
+
+func (mode UpdateMode) String() string {
+	switch mode {
+	case UpdateModeOverride:
+		return "override"
+	case UpdateModeAdd:
+		return "add"
+	case UpdateModeSkip:
+		return "skip"
+	}
+	return fmt.Sprintf("unknown(%d)", int(mode))
+}
+
+func ParseUpdateMode(s string) (UpdateMode, error) {
+	switch s {
+	case "override", "":
+		return UpdateModeOverride, nil
+	case "add", "append":
+		return UpdateModeAdd, nil
+	case "skip":
+		return UpdateModeSkip, nil
+	}
+	return UpdateModeOverride, errors.New("parse update mode fail - '"+s+"'")
+}
 
 type TagData struct {
 	ID    int64  `json:"id" xorm:"id pk autoincr"`
@@ -196,13 +229,14 @@ type Users interface {
 	Create(ctx context.Context, user *User) (int64, error)
 
 	// @Summary 修改用户名称
-	// @Param    id      path int     true     "用户ID"
-	// @Param    user    body User    true     "用户信息"
+	// @Param    id      path  int           true     "用户ID"
+	// @Param    mode    query string        false     "更新模式, 可取值： override,add,skip"
+	// @Param    user    body  User          true     "用户信息"
 	// @Accept   json
 	// @Produce  json
 	// @Router /users/{id} [put]
 	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
-	UpdateByID(ctx context.Context, id int64, user *User) error
+	UpdateByID(ctx context.Context, id int64, user *User, mode UpdateMode) error
 
 	// @Summary 修改用户的密码
 	// @Param    id           path int         true     "用户ID"

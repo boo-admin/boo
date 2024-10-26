@@ -153,7 +153,7 @@ func TestUser1(t *testing.T) {
 		client.Email.ID: "c@b.com",
 	}
 
-	err = users.UpdateByID(ctx, userid, data)
+	err = users.UpdateByID(ctx, userid, data, client.UpdateModeSkip)
 	if err != nil {
 		t.Error(err)
 		return

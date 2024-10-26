@@ -259,7 +259,7 @@ func (svc UserService) insert(ctx context.Context, currentUser authn.AuthUser, u
 	})
 	return id, err
 }
-func (svc UserService) UpdateByID(ctx context.Context, id int64, user *User) error {
+func (svc UserService) UpdateByID(ctx context.Context, id int64, user *User, mode client.UpdateMode) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -273,10 +273,10 @@ func (svc UserService) UpdateByID(ctx context.Context, id int64, user *User) err
 	if err != nil {
 		return errors.Wrap(err, "更新用户 '"+strconv.FormatInt(id, 10)+"' 失败")
 	}
-	return svc.update(ctx, currentUser, id, user, old, actionNormal)
+	return svc.update(ctx, currentUser, id, user, old, mode, actionNormal)
 }
 
-func (svc UserService) update(ctx context.Context, currentUser authn.AuthUser, id int64, user, old *User, importUser int) error {
+func (svc UserService) update(ctx context.Context, currentUser authn.AuthUser, id int64, user, old *User, mode client.UpdateMode, importUser int) error {
 	return svc.db.InTx(ctx, nil, false, func(ctx context.Context, tx *gobatis.Tx) error {
 		if old.Name != user.Name {
 			return errors.New("更新用户失败，用户名不可修改")
@@ -349,24 +349,38 @@ func (svc UserService) update(ctx context.Context, currentUser authn.AuthUser, i
 		}
 
 		var contents []ChangeRecord
-		if importUser == actionNormal {
-			var roleContents []ChangeRecord
+		var roleContents []ChangeRecord
+		var tagContents []ChangeRecord
+
+		switch mode {
+		case client.UpdateModeOverride:
 			if roleContents, err = svc.updateRoles(ctx, id, user, true); err != nil {
 				return err
 			}
-			var tagContents []ChangeRecord
 			if tagContents, err = svc.updateTags(ctx, id, user, true); err != nil {
 				return err
 			}
-			contents = roleContents
-			if len(tagContents) > 0 {
-				if len(contents) == 0 {
-					contents = tagContents
-				} else {
-					contents = append(contents, tagContents...)
-				}
+		case client.UpdateModeAdd:
+			if roleContents, err = svc.updateRoles(ctx, id, user, false); err != nil {
+				return err
+			}
+			if tagContents, err = svc.updateTags(ctx, id, user, false); err != nil {
+				return err
+			}
+		case client.UpdateModeSkip:
+		default:
+			return errors.New("不可识别的更新模式 - " + mode.String())
+		}
+
+		contents = roleContents
+		if len(tagContents) > 0 {
+			if len(contents) == 0 {
+				contents = tagContents
+			} else {
+				contents = append(contents, tagContents...)
 			}
 		}
+
 		svc.logUpdate(ctx, tx, currentUser, id, &newUser, old, importUser, contents)
 		return nil
 	})
@@ -1075,7 +1089,7 @@ func (svc UserService) Import(ctx context.Context, request *http.Request) error 
 						if !canResetPassword && password != "" && !isAllStar(password) {
 							err = errors.New("没有重置用户密码的权限，用户 '" + record.Name + "' 没有更新")
 						} else {
-							err = svc.update(ctx, currentUser, old.ID, record, old, actionImport)
+							err = svc.update(ctx, currentUser, old.ID, record, old, client.UpdateModeSkip, actionImport)
 							if err == nil {
 								if password != "" && !isAllStar(password) {
 									names := []string{record.Name, record.Nickname}

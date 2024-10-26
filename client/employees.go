@@ -1,5 +1,5 @@
-//go:generate gogenv2 server -ext=.server-gen.go employees.go
-//go:generate gogenv2 client -ext=.client-gen.go employees.go
+//go:generate gogenv2 server -convert_param_types=UpdateMode -ext=.server-gen.go employees.go
+//go:generate gogenv2 client -convert_param_types=UpdateMode -ext=.client-gen.go employees.go
 
 package client
 
@@ -162,13 +162,14 @@ type Employees interface {
 	Create(ctx context.Context, employee *Employee) (int64, error)
 
 	// @Summary 修改员工名称
-	// @Param    id      path int     true     "员工ID"
-	// @Param    employee    body Employee    true     "员工信息"
+	// @Param    id          path  int           true      "员工ID"
+	// @Param    mode        query string    false     "更新模式, 可取值： override,add,skip"
+	// @Param    employee    body  Employee      true      "员工信息"
 	// @Accept   json
 	// @Produce  json
 	// @Router /employees/{id} [put]
 	// @Success 200 {string} string  "返回一个无意义的 'OK' 字符串"
-	UpdateByID(ctx context.Context, id int64, employee *Employee) error
+	UpdateByID(ctx context.Context, id int64, employee *Employee, mode UpdateMode) error
 
 	// @Summary 删除指定的员工
 	// @Param   id            path  int                       true     "员工ID"
