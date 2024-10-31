@@ -194,6 +194,12 @@ type User2TagDao interface {
 	DeleteByTagID(ctx context.Context, tagID int64) error
 
 	QueryByUserID(ctx context.Context, userID int64) ([]User2Tag, error)
+
+	// @default select user_id from <tablename type="User2Tag" /> where tag_id = #{tagID}
+	QueryUsersByTagID(ctx context.Context, tagID int64) ([]int64, error)
+
+	// @default select user_id from <tablename type="User2Tag" /> where tag_id in (select id from <tablename type="UserTag" /> where uuid = #{uuid})
+	QueryUsersByTagUUID(ctx context.Context, uuid string) ([]int64, error)
 }
 
 // @gobatis.namespace boo
