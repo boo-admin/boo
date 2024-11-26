@@ -6,13 +6,13 @@ package session_auth
 import (
 	"context"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/services/authn/session_auth/session_core"
 	"github.com/boo-admin/boo/errors"
 )
 
 type ErrOnline struct {
-	OnlineList []client.OnlineInfo
+	OnlineList []booclient.OnlineInfo
 }
 
 func (err *ErrOnline) Error() string {
@@ -24,7 +24,7 @@ func (err *ErrOnline) Error() string {
 	return "用户已在其他机器上登录"
 }
 
-func IsOnlinedError(err error) ([]client.OnlineInfo, bool) {
+func IsOnlinedError(err error) ([]booclient.OnlineInfo, bool) {
 	for err != nil {
 		oe, ok := err.(*ErrOnline)
 		if ok {
@@ -61,7 +61,7 @@ type OnlineAdder interface {
 }
 
 type Onlines interface {
-	client.OnlineQueryer
+	booclient.OnlineQueryer
 
 	session_core.OnlineChecker
 
@@ -79,21 +79,21 @@ func OnlineCount(ctx context.Context, onlines Onlines, username string, address 
 		return 0, err
 	}
 
-	filter := func(si *client.OnlineInfo) bool {
+	filter := func(si *booclient.OnlineInfo) bool {
 		return true
 	}
 	if username != "" {
 		if address != "" {
-			filter = func(si *client.OnlineInfo) bool {
+			filter = func(si *booclient.OnlineInfo) bool {
 				return si.Username == username && si.Address == address
 			}
 		} else {
-			filter = func(si *client.OnlineInfo) bool {
+			filter = func(si *booclient.OnlineInfo) bool {
 				return si.Username == username
 			}
 		}
 	} else if address != "" {
-		filter = func(si *client.OnlineInfo) bool {
+		filter = func(si *booclient.OnlineInfo) bool {
 			return si.Address == address
 		}
 	}

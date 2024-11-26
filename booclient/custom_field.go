@@ -1,4 +1,4 @@
-package client
+package booclient
 
 var (
 	WhiteAddressList = CustomField{

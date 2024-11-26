@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/services/authn"
 	jwt "github.com/golang-jwt/jwt/v4"
@@ -206,7 +206,7 @@ func TokenFromQuery(r *http.Request) string {
 	return r.URL.Query().Get("token")
 }
 
-func New(env *client.Environment, jwtUser func(ctx context.Context, req *http.Request, token *jwt.Token) (context.Context, error)) (authn.AuthValidateFunc, error) {
+func New(env *booclient.Environment, jwtUser func(ctx context.Context, req *http.Request, token *jwt.Token) (context.Context, error)) (authn.AuthValidateFunc, error) {
 	jwtAlg := env.Config.StringWithDefault("auth.jwt.alg", "")
 	jwtSignKey := env.Config.StringWithDefault("auth.jwt.sign_key", "")
 	jwtVerifyKey := env.Config.StringWithDefault("auth.jwt.verify_key", "")

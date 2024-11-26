@@ -4,13 +4,13 @@ import (
 	"io"
 	"sync"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 )
 
-type CloseFunc = client.CloseFunc
+type CloseFunc = booclient.CloseFunc
 
 func NoCloser() io.Closer {
-	return client.NoCloser()
+	return booclient.NoCloser()
 }
 
 type SyncCloser struct {

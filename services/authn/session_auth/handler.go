@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/services/authn"
 )
@@ -98,7 +98,7 @@ func SessionVerify(opt *Option, handle func(ctx context.Context, req *http.Reque
 	}
 }
 
-func New(env *client.Environment, sessionUser func(ctx context.Context, req *http.Request, values url.Values) (context.Context, error)) (authn.AuthValidateFunc, error) {
+func New(env *booclient.Environment, sessionUser func(ctx context.Context, req *http.Request, values url.Values) (context.Context, error)) (authn.AuthValidateFunc, error) {
 	var sessionOpt Option
 	sessionOpt.SessionPath = env.Config.StringWithDefault(CfgUserSessionPath, env.AppPathWithoutSlash)
 	sessionOpt.SessionName = env.Config.StringWithDefault(CfgUserSessionName, "boo_session")

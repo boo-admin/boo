@@ -4,18 +4,18 @@ import (
 	"context"
 	"encoding/hex"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/errors"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var passwordHashers = map[string]func(env *client.Environment) (UserPassworder, error){}
+var passwordHashers = map[string]func(env *booclient.Environment) (UserPassworder, error){}
 
-func RegisterPassworder(alg string, factory func(env *client.Environment) (UserPassworder, error)) {
+func RegisterPassworder(alg string, factory func(env *booclient.Environment) (UserPassworder, error)) {
 	passwordHashers[alg] = factory
 }
 
-func NewUserPassworder(env *client.Environment) (UserPassworder, error) {
+func NewUserPassworder(env *booclient.Environment) (UserPassworder, error) {
 	alg := env.Config.StringWithDefault("users.password_hash_alg", "")
 	if alg != "" && alg != "default" {
 		f, ok := passwordHashers[alg]

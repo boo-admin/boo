@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/services/authn"
 	"github.com/boo-admin/boo/validation"
@@ -23,9 +23,9 @@ func NewDepartmentDaoWith(ref gobatis.SqlSession) DepartmentDao {
 	return NewDepartmentDao(ref)
 }
 
-func NewDepartments(env *client.Environment,
+func NewDepartments(env *booclient.Environment,
 	db *gobatis.SessionFactory,
-	operationLogger OperationLogger) (client.Departments, error) {
+	operationLogger OperationLogger) (booclient.Departments, error) {
 	return departmentService{
 		env:             env,
 		logger:          env.Logger.WithGroup("departments"),
@@ -36,7 +36,7 @@ func NewDepartments(env *client.Environment,
 }
 
 type departmentService struct {
-	env             *client.Environment
+	env             *booclient.Environment
 	logger          *slog.Logger
 	operationLogger OperationLogger
 	db              *gobatis.SessionFactory

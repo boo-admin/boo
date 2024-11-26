@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/boo-admin/boo"
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/engine/echofunctions"
 	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/goutils/httpext"
@@ -75,15 +75,15 @@ func New(srv *boo.Server, prefix string) (*echo.Echo, error) {
 	// Routes
 	mux := e.Group(prefix)
 	EnalbeSwaggerAt(mux, "/swagger", docs.SwaggerInfobooswagger.InstanceName())
-	client.InitOperationQueryer(mux, srv.OperationQueryer)
-	client.InitDepartments(mux, srv.Departments)
-	client.InitUsers(mux, srv.Users)
-	client.InitUserTags(mux, srv.UserTags)
+	booclient.InitOperationQueryer(mux, srv.OperationQueryer)
+	booclient.InitDepartments(mux, srv.Departments)
+	booclient.InitUsers(mux, srv.Users)
+	booclient.InitUserTags(mux, srv.UserTags)
 	users.InitUsersForHTTP(mux, srv.Users)
-	client.InitRoles(mux, srv.Roles)
-	client.InitEmployees(mux, srv.Employees)
+	booclient.InitRoles(mux, srv.Roles)
+	booclient.InitEmployees(mux, srv.Employees)
 	users.InitEmployeesForHTTP(mux, srv.Employees)
-	client.InitEmployeeTags(mux, srv.EmployeeTags)
+	booclient.InitEmployeeTags(mux, srv.EmployeeTags)
 
 	return e, nil
 }

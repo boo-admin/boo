@@ -7,7 +7,7 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	gobatis "github.com/runner-mei/GoBatis"
 )
 
@@ -139,15 +139,15 @@ type UserTag struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty" xorm:"updated_at updated"`
 }
 
-func (t UserTag) ToTagData() client.TagData {
-	return client.TagData{
+func (t UserTag) ToTagData() booclient.TagData {
+	return booclient.TagData{
 		ID:    t.ID,
 		UUID:  t.UUID,
 		Title: t.Title,
 	}
 }
 
-func ToUserTagFrom(t *client.TagData) *UserTag {
+func ToUserTagFrom(t *booclient.TagData) *UserTag {
 	return &UserTag{
 		ID:    t.ID,
 		UUID:  t.UUID,
@@ -179,7 +179,7 @@ type UserTagDao interface {
 	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]UserTag, error)
 
 	// @default SELECT id, uuid, title from <tablename type="UserTag" /> where id in (select tag_id from <tablename type="User2Tag" /> where user_id = #{userID})
-	QueryByUserID(ctx context.Context, userID int64) ([]client.TagData, error)
+	QueryByUserID(ctx context.Context, userID int64) ([]booclient.TagData, error)
 }
 
 // @gobatis.namespace boo
@@ -363,7 +363,7 @@ type EmployeeDao interface {
 
 	// @default SELECT u.id as user_id, emp.id as employee_id, u.nickname as user_nickname, emp.nickname as employee_nickname, u.department_id as user_department_id, emp.department_id as employee_department_id
 	// FROM <tablename type="User" alias="u" /> INNER JOIN  <tablename type="Employee" alias="emp" /> ON u.id == emp.user_id
-	GetUserEmployeeDiff(ctx context.Context) ([]client.UserEmployeeDiff, error)
+	GetUserEmployeeDiff(ctx context.Context) ([]booclient.UserEmployeeDiff, error)
 }
 
 type EmployeeTag struct {
@@ -375,15 +375,15 @@ type EmployeeTag struct {
 	UpdatedAt time.Time `json:"updated_at,omitempty" xorm:"updated_at updated"`
 }
 
-func (t EmployeeTag) ToTagData() client.TagData {
-	return client.TagData{
+func (t EmployeeTag) ToTagData() booclient.TagData {
+	return booclient.TagData{
 		ID:    t.ID,
 		UUID:  t.UUID,
 		Title: t.Title,
 	}
 }
 
-func ToEmployeeTagFrom(t *client.TagData) *EmployeeTag {
+func ToEmployeeTagFrom(t *booclient.TagData) *EmployeeTag {
 	return &EmployeeTag{
 		ID:    t.ID,
 		UUID:  t.UUID,
@@ -415,7 +415,7 @@ type EmployeeTagDao interface {
 	List(ctx context.Context, keyword string, sort string, offset, limit int64) ([]EmployeeTag, error)
 
 	// @default SELECT id, uuid, title from <tablename type="EmployeeTag" /> where id in (select tag_id from <tablename type="Employee2Tag" /> where employee_id = #{employeeID})
-	QueryByEmployeeID(ctx context.Context, employeeID int64) ([]client.TagData, error)
+	QueryByEmployeeID(ctx context.Context, employeeID int64) ([]booclient.TagData, error)
 }
 
 // @gobatis.namespace boo
@@ -441,10 +441,10 @@ func init() {
 			ctx.Config.Constants = map[string]interface{}{}
 		}
 		if _, ok := ctx.Config.Constants["user_phone"]; !ok {
-			ctx.Config.Constants["user_phone"] = client.Phone.ID
+			ctx.Config.Constants["user_phone"] = booclient.Phone.ID
 		}
 		if _, ok := ctx.Config.Constants["user_email"]; !ok {
-			ctx.Config.Constants["user_email"] = client.Email.ID
+			ctx.Config.Constants["user_email"] = booclient.Email.ID
 		}
 		return nil
 	})
@@ -454,7 +454,7 @@ func init() {
 type OperationLogDao interface {
 	WithDB(gobatis.DBRunner) OperationLogDao
 	Insert(ctx context.Context, ol *OperationLog) error
-	DeleteBy(ctx context.Context, createdAt client.TimeRange) error
-	Count(ctx context.Context, userids []int64, successful sql.NullBool, typeList []string, contentLike string, createdAt client.TimeRange) (int64, error)
-	List(ctx context.Context, userids []int64, successful sql.NullBool, typeList []string, contentLike string, createdAt client.TimeRange, offset, limit int64, sortBy string) ([]OperationLog, error)
+	DeleteBy(ctx context.Context, createdAt booclient.TimeRange) error
+	Count(ctx context.Context, userids []int64, successful sql.NullBool, typeList []string, contentLike string, createdAt booclient.TimeRange) (int64, error)
+	List(ctx context.Context, userids []int64, successful sql.NullBool, typeList []string, contentLike string, createdAt booclient.TimeRange, offset, limit int64, sortBy string) ([]OperationLog, error)
 }

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/errors"
 )
 
@@ -40,7 +40,7 @@ type Client struct {
 func (c *Client) List(ctx context.Context) ([]Service, error) {
 	hclient := c.Client
 	if hclient == nil {
-		hclient = client.GetDefaultClient()
+		hclient = booclient.GetDefaultClient()
 	}
 
 	response, err := hclient.Get(c.BaseURL)
@@ -54,7 +54,7 @@ func (c *Client) List(ctx context.Context) ([]Service, error) {
 		}
 	}()
 	if response.StatusCode != http.StatusOK {
-		return nil, client.ToResponseError(response, "list service info")
+		return nil, booclient.ToResponseError(response, "list service info")
 	}
 
 	var result []Service
@@ -65,7 +65,7 @@ func (c *Client) List(ctx context.Context) ([]Service, error) {
 func (c *Client) Heartbeat(ctx context.Context, uuid string) error {
 	hclient := c.Client
 	if hclient == nil {
-		hclient = client.GetDefaultClient()
+		hclient = booclient.GetDefaultClient()
 	}
 
 	response, err := hclient.Post(urljoin(c.BaseURL, uuid+"/heartbeat"),
@@ -80,7 +80,7 @@ func (c *Client) Heartbeat(ctx context.Context, uuid string) error {
 		}
 	}()
 	if response.StatusCode != http.StatusOK {
-		return client.ToResponseError(response, "send heartbeat message")
+		return booclient.ToResponseError(response, "send heartbeat message")
 	}
 	return nil
 }
@@ -88,7 +88,7 @@ func (c *Client) Heartbeat(ctx context.Context, uuid string) error {
 func (c *Client) Attach(ctx context.Context, svc Service) error {
 	hclient := c.Client
 	if hclient == nil {
-		hclient = client.GetDefaultClient()
+		hclient = booclient.GetDefaultClient()
 	}
 
 	var buf bytes.Buffer
@@ -109,7 +109,7 @@ func (c *Client) Attach(ctx context.Context, svc Service) error {
 		}
 	}()
 	if response.StatusCode != http.StatusOK {
-		return client.ToResponseError(response, "register myself failure")
+		return booclient.ToResponseError(response, "register myself failure")
 	}
 	return nil
 }
@@ -117,7 +117,7 @@ func (c *Client) Attach(ctx context.Context, svc Service) error {
 func (c *Client) Detach(ctx context.Context, uuid string) error {
 	hclient := c.Client
 	if hclient == nil {
-		hclient = client.GetDefaultClient()
+		hclient = booclient.GetDefaultClient()
 	}
 
 	req, err := http.NewRequest(http.MethodDelete, urljoin(c.BaseURL, uuid), strings.NewReader(""))
@@ -136,7 +136,7 @@ func (c *Client) Detach(ctx context.Context, uuid string) error {
 		}
 	}()
 	if response.StatusCode != http.StatusOK {
-		return client.ToResponseError(response, "unregister myself failure")
+		return booclient.ToResponseError(response, "unregister myself failure")
 	}
 	return nil
 }

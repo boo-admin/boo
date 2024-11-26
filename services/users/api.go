@@ -7,22 +7,22 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 )
 
-type TimeRange = client.TimeRange
-type Department = client.Department
-type User = client.User
-type Role = client.Role
-type Employee = client.Employee
-type OperationLog = client.OperationLog
-type OperationLogLocaleConfig = client.OperationLogLocaleConfig
-type OperationLogRecord = client.OperationLogRecord
-type ChangeRecord = client.ChangeRecord
-type CustomField = client.CustomField
+type TimeRange = booclient.TimeRange
+type Department = booclient.Department
+type User = booclient.User
+type Role = booclient.Role
+type Employee = booclient.Employee
+type OperationLog = booclient.OperationLog
+type OperationLogLocaleConfig = booclient.OperationLogLocaleConfig
+type OperationLogRecord = booclient.OperationLogRecord
+type ChangeRecord = booclient.ChangeRecord
+type CustomField = booclient.CustomField
 
 type Users interface {
-	client.Users
+	booclient.Users
 	UsersForHTTP
 }
 
@@ -44,7 +44,7 @@ type UsersForHTTP interface {
 }
 
 type Employees interface {
-	client.Employees
+	booclient.Employees
 	EmployeesForHTTP
 }
 

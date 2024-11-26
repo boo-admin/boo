@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	gobatis "github.com/runner-mei/GoBatis"
 )
 
@@ -71,12 +71,12 @@ func (queryer operationQueryer) List(ctx context.Context, userid []int64, succes
 	return items, nil
 }
 
-func LoadOperationLogLocaleConfig(env *client.Environment) (map[string]OperationLogLocaleConfig, error) {
+func LoadOperationLogLocaleConfig(env *booclient.Environment) (map[string]OperationLogLocaleConfig, error) {
 	filename := env.Fs.FromConfig("operation_logs.zh.json")
 	customFilename := env.Fs.FromCustomConfig("operation_logs.zh.json")
 
 	var cfg map[string]OperationLogLocaleConfig
-	err := client.FromHjsonFile(filename, &cfg)
+	err := booclient.FromHjsonFile(filename, &cfg)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return nil, err
@@ -84,7 +84,7 @@ func LoadOperationLogLocaleConfig(env *client.Environment) (map[string]Operation
 	}
 
 	var customCfg map[string]OperationLogLocaleConfig
-	err = client.FromHjsonFile(customFilename, &customCfg)
+	err = booclient.FromHjsonFile(customFilename, &customCfg)
 	if err != nil {
 		if !os.IsNotExist(err) {
 			return map[string]OperationLogLocaleConfig{}, nil
@@ -115,9 +115,9 @@ func LoadOperationLogLocaleConfig(env *client.Environment) (map[string]Operation
 	return cfg, nil
 }
 
-func NewOperationQueryer(env *client.Environment,
+func NewOperationQueryer(env *booclient.Environment,
 	session gobatis.SqlSession,
-	findUsernameByID func(ctx context.Context, id int64) (string, error)) (client.OperationQueryer, error) {
+	findUsernameByID func(ctx context.Context, id int64) (string, error)) (booclient.OperationQueryer, error) {
 	names, err := LoadOperationLogLocaleConfig(env)
 	if err != nil {
 		return nil, err

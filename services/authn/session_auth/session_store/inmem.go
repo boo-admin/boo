@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/goutils/tid"
 	"github.com/boo-admin/boo/services/authn/session_auth"
 )
@@ -23,7 +23,7 @@ const (
 )
 
 type onlineInfo struct {
-	client.OnlineInfo
+	booclient.OnlineInfo
 
 	t int64
 }
@@ -48,13 +48,13 @@ func (o *onlineInfo) GetUpdatedAt() time.Time {
 	return time.Unix(seconds, nanoseconds)
 }
 
-func (o *onlineInfo) GetOnlineInfo() client.OnlineInfo {
+func (o *onlineInfo) GetOnlineInfo() booclient.OnlineInfo {
 	c := o.OnlineInfo
 	c.UpdatedAt = o.GetUpdatedAt()
 	return c
 }
 
-func CreateInmem(env *client.Environment) session_auth.Onlines {
+func CreateInmem(env *booclient.Environment) session_auth.Onlines {
 	return &SessionManager{
 		apiKey:   env.Config.StringWithDefault(CfgSessionRemoteApiKey, ""),
 		filename: env.Fs.FromSession("boo_sessions.json"),
@@ -89,7 +89,7 @@ func (mgr *SessionManager) Load(context.Context) error {
 		return nil
 	}
 
-	var list []client.OnlineInfo
+	var list []booclient.OnlineInfo
 	err = json.Unmarshal(bs, &list)
 	if err != nil {
 		return err
@@ -163,7 +163,7 @@ func (mgr *SessionManager) UpdateNow(ctx context.Context, uuid, apiKey string) e
 	return nil
 }
 
-func (mgr *SessionManager) GetBySessionID(ctx context.Context, uuid string) (*client.OnlineInfo, error) {
+func (mgr *SessionManager) GetBySessionID(ctx context.Context, uuid string) (*booclient.OnlineInfo, error) {
 	mgr.mu.RLock()
 	defer mgr.mu.RUnlock()
 
@@ -175,13 +175,13 @@ func (mgr *SessionManager) GetBySessionID(ctx context.Context, uuid string) (*cl
 	return &copyed, nil
 }
 
-func (mgr *SessionManager) List(ctx context.Context) ([]client.OnlineInfo, error) {
+func (mgr *SessionManager) List(ctx context.Context) ([]booclient.OnlineInfo, error) {
 	mgr.mu.RLock()
 	defer mgr.mu.RUnlock()
 
 	mgr.cleanExpiredInReadlock(ctx)
 
-	var results = make([]client.OnlineInfo, 0, len(mgr.list))
+	var results = make([]booclient.OnlineInfo, 0, len(mgr.list))
 	for _, s := range mgr.list {
 		results = append(results, s.GetOnlineInfo())
 	}
@@ -195,7 +195,7 @@ func (mgr *SessionManager) Login(ctx context.Context, username, loginAddress, ap
 	mgr.mu.Lock()
 	defer mgr.mu.Unlock()
 
-	var old *client.OnlineInfo
+	var old *booclient.OnlineInfo
 
 	for _, s := range mgr.list {
 		if s.Username == username && s.Address == loginAddress {
@@ -210,7 +210,7 @@ func (mgr *SessionManager) Login(ctx context.Context, username, loginAddress, ap
 
 	uuid := tid.GenerateID()
 	mgr.list[uuid] = &onlineInfo{
-		OnlineInfo: client.OnlineInfo{
+		OnlineInfo: booclient.OnlineInfo{
 			UUID:      uuid,
 			Username:  username,
 			Address:   loginAddress,
@@ -291,7 +291,7 @@ func (mgr *SessionManager) IsOnlineExists(ctx context.Context, username, loginAd
 
 	mgr.cleanExpiredInReadlock(ctx)
 
-	var onlineList = make([]client.OnlineInfo, 0, 4)
+	var onlineList = make([]booclient.OnlineInfo, 0, 4)
 
 	for _, s := range mgr.list {
 		if s.Username == username {

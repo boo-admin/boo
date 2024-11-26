@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/goutils/as"
 	"github.com/boo-admin/boo/goutils/importer"
@@ -76,13 +76,13 @@ func NewUser2TagDaoWith(ref gobatis.SqlSession) User2TagDao {
 	return NewUser2TagDao(ref)
 }
 
-func NewUsers(env *client.Environment,
+func NewUsers(env *booclient.Environment,
 	db *gobatis.SessionFactory,
 	operationLogger OperationLogger) (*UserService, error) {
 	enablePasswordCheck := env.Config.BoolWithDefault("enable_password_check", false)
 	var fields []CustomField
 	if s := env.Config.StringWithDefault("usercustomfields", ""); s != "" {
-		filename := client.GetRealDir(context.Background(), env, s)
+		filename := booclient.GetRealDir(context.Background(), env, s)
 		bs, err := ioutil.ReadFile(filename)
 		if err != nil {
 			if !os.IsNotExist(err) {
@@ -93,10 +93,10 @@ func NewUsers(env *client.Environment,
 		}
 
 		if fields == nil {
-			fields = client.DefaultFields
+			fields = booclient.DefaultFields
 		}
 	} else {
-		fields = client.DefaultFields
+		fields = booclient.DefaultFields
 	}
 
 	var defaultUsernames = env.Config.StringsWithDefault("users.default_names", nil)
@@ -127,7 +127,7 @@ func NewUsers(env *client.Environment,
 }
 
 type UserService struct {
-	env              *client.Environment
+	env              *booclient.Environment
 	logger           *slog.Logger
 	operationLogger  OperationLogger
 	db               *gobatis.SessionFactory
@@ -172,12 +172,12 @@ func (svc UserService) ValidateUser(v *validation.Validation, user *User) bool {
 		}
 	}
 
-	o := user.Fields[client.WhiteAddressList.ID]
+	o := user.Fields[booclient.WhiteAddressList.ID]
 	if o != nil {
 		var ss = as.ToStrings(o)
 		if len(ss) != 0 {
 			for _, s := range ss {
-				v.IPAddr("fields."+client.WhiteAddressList.ID, s,
+				v.IPAddr("fields."+booclient.WhiteAddressList.ID, s,
 					validation.IPAny,
 					validation.IPv4CIDR,
 					validation.IPv6CIDR,
@@ -259,7 +259,7 @@ func (svc UserService) insert(ctx context.Context, currentUser authn.AuthUser, u
 	})
 	return id, err
 }
-func (svc UserService) UpdateByID(ctx context.Context, id int64, user *User, mode client.UpdateMode) error {
+func (svc UserService) UpdateByID(ctx context.Context, id int64, user *User, mode booclient.UpdateMode) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -276,7 +276,7 @@ func (svc UserService) UpdateByID(ctx context.Context, id int64, user *User, mod
 	return svc.update(ctx, currentUser, id, user, old, mode, actionNormal)
 }
 
-func (svc UserService) update(ctx context.Context, currentUser authn.AuthUser, id int64, user, old *User, mode client.UpdateMode, importUser int) error {
+func (svc UserService) update(ctx context.Context, currentUser authn.AuthUser, id int64, user, old *User, mode booclient.UpdateMode, importUser int) error {
 	return svc.db.InTx(ctx, nil, false, func(ctx context.Context, tx *gobatis.Tx) error {
 		if old.Name != user.Name {
 			return errors.New("更新用户失败，用户名不可修改")
@@ -353,21 +353,21 @@ func (svc UserService) update(ctx context.Context, currentUser authn.AuthUser, i
 		var tagContents []ChangeRecord
 
 		switch mode {
-		case client.UpdateModeOverride:
+		case booclient.UpdateModeOverride:
 			if roleContents, err = svc.updateRoles(ctx, id, user, true); err != nil {
 				return err
 			}
 			if tagContents, err = svc.updateTags(ctx, id, user, true); err != nil {
 				return err
 			}
-		case client.UpdateModeAdd:
+		case booclient.UpdateModeAdd:
 			if roleContents, err = svc.updateRoles(ctx, id, user, false); err != nil {
 				return err
 			}
 			if tagContents, err = svc.updateTags(ctx, id, user, false); err != nil {
 				return err
 			}
-		case client.UpdateModeSkip:
+		case booclient.UpdateModeSkip:
 		default:
 			return errors.New("不可识别的更新模式 - " + mode.String())
 		}
@@ -402,7 +402,7 @@ func (svc UserService) updateRoles(ctx context.Context, id int64, user *User, is
 
 		isNewRole := false
 		if role.ID <= 0 {
-			var old *client.Role
+			var old *booclient.Role
 
 			if role.UUID != "" {
 				old, err = svc.roleDao.FindByUUID(ctx, role.UUID)
@@ -1002,7 +1002,7 @@ func (svc UserService) Import(ctx context.Context, request *http.Request) error 
 		canCreateDepartment = ok
 	}
 
-	ctx = context.WithValue(ctx, importer.ContextToRealDirKey, client.ToRealDirFunc(svc.env))
+	ctx = context.WithValue(ctx, importer.ContextToRealDirKey, booclient.ToRealDirFunc(svc.env))
 	reader, closer, err := importer.ReadHTTP(ctx, request)
 	if err != nil {
 		return err
@@ -1033,7 +1033,7 @@ func (svc UserService) Import(ctx context.Context, request *http.Request) error 
 			}))
 
 		for _, f := range svc.fields {
-			func(f client.CustomField) {
+			func(f booclient.CustomField) {
 				columns = append(columns, importer.StrColumn(append([]string{f.ID, f.Name}, f.Alias...), false,
 					func(ctx context.Context, lineNumber int, origin, value string) error {
 						if record.Fields == nil {
@@ -1089,7 +1089,7 @@ func (svc UserService) Import(ctx context.Context, request *http.Request) error 
 						if !canResetPassword && password != "" && !isAllStar(password) {
 							err = errors.New("没有重置用户密码的权限，用户 '" + record.Name + "' 没有更新")
 						} else {
-							err = svc.update(ctx, currentUser, old.ID, record, old, client.UpdateModeSkip, actionImport)
+							err = svc.update(ctx, currentUser, old.ID, record, old, booclient.UpdateModeSkip, actionImport)
 							if err == nil {
 								if password != "" && !isAllStar(password) {
 									names := []string{record.Name, record.Nickname}
@@ -1365,9 +1365,9 @@ func (svc UserService) logDelete(ctx context.Context, tx *gobatis.Tx, currentUse
 	}
 }
 
-func NewUserTags(env *client.Environment,
+func NewUserTags(env *booclient.Environment,
 	db *gobatis.SessionFactory,
-	operationLogger OperationLogger) (client.UserTags, error) {
+	operationLogger OperationLogger) (booclient.UserTags, error) {
 	sess := db.SessionReference()
 	return &userTagService{
 		env:             env,
@@ -1380,7 +1380,7 @@ func NewUserTags(env *client.Environment,
 }
 
 type userTagService struct {
-	env             *client.Environment
+	env             *booclient.Environment
 	logger          *slog.Logger
 	operationLogger OperationLogger
 	db              *gobatis.SessionFactory
@@ -1389,15 +1389,15 @@ type userTagService struct {
 	user2TagDao     User2TagDao
 }
 
-func (svc *userTagService) fromTag(tag *UserTag) *client.TagData {
-	return &client.TagData{
+func (svc *userTagService) fromTag(tag *UserTag) *booclient.TagData {
+	return &booclient.TagData{
 		ID: tag.ID,
 		UUID: tag.UUID,
 		Title: tag.Title,
 	}
 }
 
-func (svc *userTagService) toTag(tag *client.TagData) *UserTag {
+func (svc *userTagService) toTag(tag *booclient.TagData) *UserTag {
 	return &UserTag{
 		ID: tag.ID,
 		UUID: tag.UUID,
@@ -1405,11 +1405,11 @@ func (svc *userTagService) toTag(tag *client.TagData) *UserTag {
 	}
 }
 
-func (svc *userTagService) Create(ctx context.Context, tag *client.TagData) (int64, error) {
+func (svc *userTagService) Create(ctx context.Context, tag *booclient.TagData) (int64, error) {
 	return svc.userTagDao.Insert(ctx, svc.toTag(tag))
 }
 
-func (svc *userTagService) UpdateByID(ctx context.Context, id int64, tag *client.TagData) error {
+func (svc *userTagService) UpdateByID(ctx context.Context, id int64, tag *booclient.TagData) error {
 	return svc.userTagDao.UpdateByID(ctx, id, svc.toTag(tag))
 }
 
@@ -1433,7 +1433,7 @@ func (svc *userTagService) DeleteBatch(ctx context.Context, id []int64) error {
 	return nil
 }
 
-func (svc *userTagService) FindByID(ctx context.Context, id int64) (*client.TagData, error) {
+func (svc *userTagService) FindByID(ctx context.Context, id int64) (*booclient.TagData, error) {
 	tag, err := svc.userTagDao.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -1443,13 +1443,13 @@ func (svc *userTagService) FindByID(ctx context.Context, id int64) (*client.TagD
 }
 
 
-func (svc *userTagService) List(ctx context.Context, sort string, offset, limit int64) ([]client.TagData, error) {
+func (svc *userTagService) List(ctx context.Context, sort string, offset, limit int64) ([]booclient.TagData, error) {
 	tags, err := svc.userTagDao.List(ctx, "", sort, offset, limit)
 	if err != nil {
 		return nil, err
 	}
 
-	var results = make([]client.TagData, 0, len(tags))
+	var results = make([]booclient.TagData, 0, len(tags))
 	for _, tag := range tags {
 		results = append(results, *svc.fromTag(&tag))
 	}

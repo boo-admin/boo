@@ -4,7 +4,7 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/goutils/tid"
 	"github.com/boo-admin/boo/services/authn"
@@ -22,9 +22,9 @@ func NewRoleDaoWith(ref gobatis.SqlSession) RoleDao {
 	return NewRoleDao(ref)
 }
 
-func NewRoles(env *client.Environment,
+func NewRoles(env *booclient.Environment,
 	db *gobatis.SessionFactory,
-	operationLogger OperationLogger) (client.Roles, error) {
+	operationLogger OperationLogger) (booclient.Roles, error) {
 	return roleService{
 		env:             env,
 		logger:          env.Logger.WithGroup("roles"),
@@ -34,7 +34,7 @@ func NewRoles(env *client.Environment,
 }
 
 type roleService struct {
-	env             *client.Environment
+	env             *booclient.Environment
 	logger          *slog.Logger
 	operationLogger OperationLogger
 	// db              *gobatis.SessionFactory

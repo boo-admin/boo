@@ -1,7 +1,7 @@
 //go:generate gogenv2 server -ext=.server-gen.go operation_logs.go
 //go:generate gogenv2 client -ext=.client-gen.go operation_logs.go
 
-package client
+package booclient
 
 import (
 	"context"

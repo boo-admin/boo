@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/boo-admin/boo/app_tests"
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/validation"
 	"github.com/boo-admin/boo/services/users"
@@ -26,23 +26,23 @@ func TestUser1(t *testing.T) {
 		// cmpopts.IgnoreFields(BackupRule{}, "ID", "CreatedAt", "UpdatedAt"),
 
 
-		cmpopts.IgnoreFields(client.Role{}, "ID", "CreatedAt", "UpdatedAt"),
-		cmpopts.IgnoreFields(client.TagData{}, "ID"),
-		cmpopts.IgnoreFields(client.Department{}, "ID", "CreatedAt", "UpdatedAt"),
+		cmpopts.IgnoreFields(booclient.Role{}, "ID", "CreatedAt", "UpdatedAt"),
+		cmpopts.IgnoreFields(booclient.TagData{}, "ID"),
+		cmpopts.IgnoreFields(booclient.Department{}, "ID", "CreatedAt", "UpdatedAt"),
 		cmpopts.IgnoreFields(users.UserTag{}, "ID", "CreatedAt", "UpdatedAt"),
 	}
 
 	ctx := context.Background()
-	pxy, err := client.NewResty(app.BaseURL())
+	pxy, err := booclient.NewResty(app.BaseURL())
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	pxy.SetBasicAuth("admin", "admin")
 
-	departments := client.NewRemoteDepartments(pxy)
+	departments := booclient.NewRemoteDepartments(pxy)
 	var dbnow = app.DbNow()
-	departmentID, err := departments.Create(ctx, &client.Department{
+	departmentID, err := departments.Create(ctx, &booclient.Department{
 		UUID:      "abc",
 		Name:      "abc",
 		UpdatedAt: dbnow,
@@ -53,9 +53,9 @@ func TestUser1(t *testing.T) {
 		return
 	}
 
-	users := client.NewRemoteUsers(pxy)
+	users := booclient.NewRemoteUsers(pxy)
 
-	data := &client.User{
+	data := &booclient.User{
 		Name:         "abc",
 		Nickname:     "测试用户名1",
 		DepartmentID: departmentID,
@@ -63,20 +63,20 @@ func TestUser1(t *testing.T) {
 		// Source: "default",
 		Disabled: false,
 		Fields: map[string]interface{}{
-			client.Phone.ID: "1334567",
-			client.Email.ID: "a@b.com",
+			booclient.Phone.ID: "1334567",
+			booclient.Email.ID: "a@b.com",
 		},
 
 		UpdatedAt: dbnow,
 		CreatedAt: dbnow,
 
-		Tags: []client.TagData{
+		Tags: []booclient.TagData{
 			{UUID: "uid1"},
 			{Title: "title2"},
 			{UUID: "uid3", Title: "title3"},
 		},
 
-		Roles: []client.Role{
+		Roles: []booclient.Role{
 			{UUID: "ruid1"},
 			{Title: "rtitle2"},
 			{UUID: "ruid3", Title: "rtitle3"},
@@ -117,7 +117,7 @@ func TestUser1(t *testing.T) {
 		return
 	}
 
- 	data.Department = &client.Department{
+ 	data.Department = &booclient.Department{
                        UUID:      "abc",
                        Name:      "abc",
                }
@@ -150,10 +150,10 @@ func TestUser1(t *testing.T) {
 	data.Nickname = "abcd"
 	data.Description = "abcd"
 	data.Fields = map[string]interface{}{
-		client.Email.ID: "c@b.com",
+		booclient.Email.ID: "c@b.com",
 	}
 
-	err = users.UpdateByID(ctx, userid, data, client.UpdateModeSkip)
+	err = users.UpdateByID(ctx, userid, data, booclient.UpdateModeSkip)
 	if err != nil {
 		t.Error(err)
 		return
@@ -166,15 +166,15 @@ func TestUser1(t *testing.T) {
 	}
 
 	data.Fields = map[string]interface{}{
-		client.Phone.ID: "1334567",
-		client.Email.ID: "c@b.com",
+		booclient.Phone.ID: "1334567",
+		booclient.Email.ID: "c@b.com",
 	}
 	if !cmp.Equal(data, actual, opts...) {
 		diff := cmp.Diff(data, actual, opts...)
 		t.Error(diff)
 	}
 
-	list, err := users.List(ctx, 0, "", "", "", client.None, []string{"*"}, "", 0, 0)
+	list, err := users.List(ctx, 0, "", "", "", booclient.None, []string{"*"}, "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -185,7 +185,7 @@ func TestUser1(t *testing.T) {
 		t.Error(diff)
 	}
 
-	count, err := users.Count(ctx, 0, "", "", "", client.None)
+	count, err := users.Count(ctx, 0, "", "", "", booclient.None)
 	if err != nil {
 		t.Error(err)
 		return
@@ -200,7 +200,7 @@ func TestUser1(t *testing.T) {
 		return
 	}
 
-	count, err = users.Count(ctx, 0, "", "", "", client.None)
+	count, err = users.Count(ctx, 0, "", "", "", booclient.None)
 	if err != nil {
 		t.Error(err)
 		return

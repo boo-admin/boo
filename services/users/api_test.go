@@ -10,7 +10,7 @@ import (
 	"testing"
 
 	"github.com/boo-admin/boo/app_tests"
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 
 	"github.com/boo-admin/boo/goutils/importer"
 )
@@ -21,14 +21,14 @@ func TestUserImport1(t *testing.T) {
 	defer app.Stop(t)
 
 	ctx := context.Background()
-	pxy, err := client.NewResty(app.BaseURL())
+	pxy, err := booclient.NewResty(app.BaseURL())
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	pxy.SetBasicAuth("admin", "admin")
 
-	users := client.NewRemoteUsers(pxy)
+	users := booclient.NewRemoteUsers(pxy)
 
 	// opts := cmp.Options{
 	// 	cmpopts.EquateApproxTime(1 * time.Second),
@@ -75,7 +75,7 @@ func TestUserImport1(t *testing.T) {
 		return
 	}
 
-	list, err := users.List(ctx, 0, "", "", "", client.None, nil, "", 0, 0)
+	list, err := users.List(ctx, 0, "", "", "", booclient.None, nil, "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -127,7 +127,7 @@ func TestUserImport1(t *testing.T) {
 		return
 	}
 
-	list, err = users.List(ctx, 0, "", "", "", client.None, nil, "", 0, 0)
+	list, err = users.List(ctx, 0, "", "", "", booclient.None, nil, "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -158,14 +158,14 @@ func TestEmployeeImport1(t *testing.T) {
 	defer app.Stop(t)
 
 	ctx := context.Background()
-	pxy, err := client.NewResty(app.BaseURL())
+	pxy, err := booclient.NewResty(app.BaseURL())
 	if err != nil {
 		t.Error(err)
 		return
 	}
 	pxy.SetBasicAuth("admin", "admin")
 
-	users := client.NewRemoteEmployees(pxy)
+	users := booclient.NewRemoteEmployees(pxy)
 
 	// opts := cmp.Options{
 	// 	cmpopts.EquateApproxTime(1 * time.Second),
@@ -212,7 +212,7 @@ func TestEmployeeImport1(t *testing.T) {
 		return
 	}
 
-	list, err := users.List(ctx, 0, "", "", client.None, []string{"*"}, "", 0, 0)
+	list, err := users.List(ctx, 0, "", "", booclient.None, []string{"*"}, "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -264,7 +264,7 @@ func TestEmployeeImport1(t *testing.T) {
 		return
 	}
 
-	list, err = users.List(ctx, 0, "", "", client.None, []string{"*"}, "", 0, 0)
+	list, err = users.List(ctx, 0, "", "", booclient.None, []string{"*"}, "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return

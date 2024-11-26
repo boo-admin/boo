@@ -13,7 +13,7 @@ import (
 	"time"
 
 	"github.com/boo-admin/boo"
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/engine/echofunctions"
 	"github.com/boo-admin/boo/engine/echosrv"
 	"github.com/boo-admin/boo/goutils/httpext"
@@ -29,7 +29,7 @@ import (
 
 type TestApp struct {
 	Logger     *slog.Logger
-	Env        *client.Environment
+	Env        *booclient.Environment
 	CurrentDir string
 	Server     *boo.Server
 
@@ -72,7 +72,7 @@ func NewTestApp(t testing.TB, params map[string]string) *TestApp {
 
 	setDefault(params, "users.cookie.hash_secret", "xxxx")
 
-	env, err := client.NewEnvironmentWith("boo", "test.properties", params)
+	env, err := booclient.NewEnvironmentWith("boo", "test.properties", params)
 	if err != nil {
 		t.Error("NewEnvironmentWith()", err)
 		t.FailNow()
@@ -284,7 +284,7 @@ func GetModulePath() (string, error) {
 	}
 	for {
 		gomod := filepath.Join(wd, "go.mod")
-		if client.FileExists(gomod) {
+		if booclient.FileExists(gomod) {
 			return wd, nil
 		}
 		parent := filepath.Dir(wd)

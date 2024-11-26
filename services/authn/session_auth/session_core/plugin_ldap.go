@@ -6,7 +6,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	ldap "github.com/go-ldap/ldap/v3"
 	"github.com/mei-rune/iprange"
 	"golang.org/x/exp/slog"
@@ -37,7 +37,7 @@ func isConnectError(err error) bool {
 	return false
 }
 
-func LdapUserCheck(env *client.Environment, logger *slog.Logger) AuthOption {
+func LdapUserCheck(env *booclient.Environment, logger *slog.Logger) AuthOption {
 	return AuthOptionFunc(func(auth *AuthService) error {
 		ldapServer := env.Config.StringWithDefault(CfgUserLdapAddress, "")
 		if ldapServer == "" {

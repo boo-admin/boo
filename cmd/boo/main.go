@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/boo-admin/boo"
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/engine/echosrv"
 	_ "github.com/lib/pq"
 	"golang.org/x/exp/slog"
@@ -19,7 +19,7 @@ func main() {
 	// 	return
 	// }
 	// currentDir := filepath.Dir(binary)
-	env, err := client.NewEnvironmentWith("boo", "app.properties", map[string]string{
+	env, err := booclient.NewEnvironmentWith("boo", "app.properties", map[string]string{
 		"db.reset_db": "true",
 		"db.drv":      "postgres",
 		"db.url":      "host=127.0.0.1 port=5432 user=golang password=123456 dbname=golang sslmode=disable",

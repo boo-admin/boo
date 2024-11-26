@@ -1,7 +1,7 @@
 //go:generate gogenv2 server -ext=.server-gen.go roles.go
 //go:generate gogenv2 client -ext=.client-gen.go roles.go
 
-package client
+package booclient
 
 import (
 	"context"

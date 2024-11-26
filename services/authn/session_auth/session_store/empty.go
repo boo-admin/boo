@@ -3,11 +3,11 @@ package session_store
 import (
 	"context"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/services/authn/session_auth"
 )
 
-func CreateEmpty(env *client.Environment) session_auth.Onlines {
+func CreateEmpty(env *booclient.Environment) session_auth.Onlines {
 	return &EmptySessions{}
 }
 
@@ -25,13 +25,13 @@ func (sess EmptySessions) LogoutBySessionID(ctx context.Context, key string) err
 func (sess EmptySessions) LogoutByUsername(ctx context.Context, username string) error {
 	return nil
 }
-func (sess EmptySessions) GetBySessionID(ctx context.Context, id string) (*client.OnlineInfo, error) {
+func (sess EmptySessions) GetBySessionID(ctx context.Context, id string) (*booclient.OnlineInfo, error) {
 	return nil, nil
 }
-func (sess EmptySessions) Query(ctx context.Context, username string) ([]client.OnlineInfo, error) {
+func (sess EmptySessions) Query(ctx context.Context, username string) ([]booclient.OnlineInfo, error) {
 	return nil, nil
 }
-func (sess EmptySessions) List(ctx context.Context) ([]client.OnlineInfo, error) {
+func (sess EmptySessions) List(ctx context.Context) ([]booclient.OnlineInfo, error) {
 	return nil, nil
 }
 func (sess EmptySessions) UpdateNow(ctx context.Context, uuid, apiKey string) error {

@@ -1,7 +1,7 @@
 //go:generate gogenv2 server -convert_param_types=UpdateMode -ext=.server-gen.go employees.go
 //go:generate gogenv2 client -convert_param_types=UpdateMode -ext=.client-gen.go employees.go
 
-package client
+package booclient
 
 import (
 	"context"

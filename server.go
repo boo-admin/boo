@@ -4,28 +4,28 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/boo-admin/boo/client"
+	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/services/users"
 	gobatis "github.com/runner-mei/GoBatis"
 )
 
 type Server struct {
-	Env       *client.Environment
+	Env       *booclient.Environment
 	Params    map[string]string
 	Factory   *gobatis.SessionFactory
 	ToRealDir func(context.Context, string) string
 
 	OperationLogger  users.OperationLogger
-	OperationQueryer client.OperationQueryer
-	Departments      client.Departments
+	OperationQueryer booclient.OperationQueryer
+	Departments      booclient.Departments
 	Users            users.Users
-	UserTags         client.UserTags
-	Roles            client.Roles
+	UserTags         booclient.UserTags
+	Roles            booclient.Roles
 	Employees        users.Employees
-	EmployeeTags     client.EmployeeTags
+	EmployeeTags     booclient.EmployeeTags
 }
 
-func NewServer(env *client.Environment) (*Server, error) {
+func NewServer(env *booclient.Environment) (*Server, error) {
 	srv := &Server{
 		Env: env,
 	}
@@ -96,7 +96,7 @@ func NewServer(env *client.Environment) (*Server, error) {
 	return srv, nil
 }
 
-func NewDbFactory(env *client.Environment) (*gobatis.SessionFactory, error) {
+func NewDbFactory(env *booclient.Environment) (*gobatis.SessionFactory, error) {
 	driverName := env.Config.StringWithDefault("db.drv", "")
 	sourceName := env.Config.StringWithDefault("db.url", "")
 	dbConn, err := sql.Open(driverName, sourceName)
@@ -106,7 +106,7 @@ func NewDbFactory(env *client.Environment) (*gobatis.SessionFactory, error) {
 	tagSplit := gobatis.SplitXORM
 
 	return gobatis.New(&gobatis.Config{
-		Tracer:    client.NewSQLTracer(env.Logger.WithGroup("db")),
+		Tracer:    booclient.NewSQLTracer(env.Logger.WithGroup("db")),
 		TagPrefix: tagSplit.Prefix,
 		TagMapper: tagSplit.Split,
 		// Constants:  constants,

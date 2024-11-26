@@ -1,7 +1,7 @@
 //go:generate gogenv2 server -ext=.server-gen.go online.go
 //go:generate gogenv2 client -ext=.client-gen.go online.go
 
-package client
+package booclient
 
 import (
 	"context"
