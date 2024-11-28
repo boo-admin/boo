@@ -31,6 +31,34 @@ func StrColumn(names []string, required bool, setStr func(ctx context.Context, l
 	}
 }
 
+func StrArrayColumn(names []string, required bool, sep string, setStrArray func(ctx context.Context, lineNumber int, originName string, value []string) error) Column {
+	return Column{
+		Names:    names,
+		Required: required,
+		Set: func(ctx context.Context, lineNumber int, originName, value string) error {
+			value = strings.TrimSpace(value)
+			if value == "" {
+				return setStrArray(ctx, lineNumber, originName, nil)
+			}
+
+			ss := strings.Split(value, sep)
+			offset := 0
+			for idx, s := range ss {
+				s = strings.TrimSpace(s)
+				if s == "" {
+					continue
+				}
+
+				if offset != idx {
+					ss[offset] = ss[idx]
+				}
+				offset ++
+			}
+			return setStrArray(ctx, lineNumber, originName, ss[:offset])
+		},
+	}
+}
+
 func getname(names []string) string {
 	if len(names) > 0 {
 		return names[0]

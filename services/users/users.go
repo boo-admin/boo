@@ -1069,32 +1069,16 @@ func (svc UserService) Import(ctx context.Context, request *http.Request) error 
 				record.Password = value
 				return nil
 			}))
-		columns = append(columns, importer.StrColumn([]string{"roles", "角色"}, false,
-			func(ctx context.Context, lineNumber int, origin, value string) error {
-				value = strings.TrimSpace(value)
-				if value == "" {
-					return nil
-				}
-				for _, s := range strings.Split(value, ",") {
-					s = strings.TrimSpace(s)
-					if s == "" {
-						continue
-					}
+		columns = append(columns, importer.StrArrayColumn([]string{"roles", "角色"}, false, ",",
+			func(ctx context.Context, lineNumber int, origin string, value []string) error {
+				for _, s := range value {
 					record.Roles = append(record.Roles, booclient.Role{Title: s})
 				}
 				return nil
 			}))
-		columns = append(columns, importer.StrColumn([]string{"tags", "标签"}, false,
-			func(ctx context.Context, lineNumber int, origin, value string) error {
-				value = strings.TrimSpace(value)
-				if value == "" {
-					return nil
-				}
-				for _, s := range strings.Split(value, ",") {
-					s = strings.TrimSpace(s)
-					if s == "" {
-						continue
-					}
+		columns = append(columns, importer.StrArrayColumn([]string{"tags", "标签"}, false, ",",
+			func(ctx context.Context, lineNumber int, origin string, value []string) error {
+				for _, s := range value {
 					record.Tags = append(record.Tags, booclient.TagData{Title: s})
 				}
 				return nil
