@@ -235,7 +235,7 @@ func (svc UserService) insert(ctx context.Context, currentUser authn.AuthUser, u
 		user.ID = id
 
 		var contents []ChangeRecord
-		if importUser == actionNormal {
+		if importUser == actionNormal || importUser == actionImport {
 			var roleContents []ChangeRecord
 			if roleContents, err = svc.updateRoles(ctx, id, user, false); err != nil {
 				return err
@@ -302,7 +302,7 @@ func (svc UserService) update(ctx context.Context, currentUser authn.AuthUser, i
 		if user.Nickname != "" {
 			newUser.Nickname = user.Nickname
 		}
-		if importUser == actionImport {
+		if importUser == actionNormal {
 			if user.Description != "" {
 				newUser.Description = user.Description
 			}
@@ -911,6 +911,8 @@ func (svc UserService) Export(ctx context.Context, format string, inline bool, w
 				"用户名",
 				"中文名",
 				"部门",
+				"角色",
+				"标签",
 			}
 			for _, f := range svc.fields {
 				titles = append(titles, f.Name)
@@ -941,7 +943,7 @@ func (svc UserService) Export(ctx context.Context, format string, inline bool, w
 				},
 				ReadFunc: func(ctx context.Context) ([]string, error) {
 					department := departmentCache[list[index].DepartmentID]
-					if department == nil {
+					if department == nil && list[index].DepartmentID > 0 {
 						d, err := svc.departmentDao.FindByID(ctx, list[index].DepartmentID)
 						if err != nil {
 							return nil, err
@@ -950,10 +952,46 @@ func (svc UserService) Export(ctx context.Context, format string, inline bool, w
 						department = d
 					}
 
+					var tags string
+					if tagList, err := svc.userTagDao.QueryByUserID(ctx, list[index].ID); err != nil {
+						if err != nil && !errors.Is(err, sql.ErrNoRows){
+							return nil, err
+						}
+					} else {
+						var sb strings.Builder
+						for idx, tag := range tagList {
+							if idx > 0 {
+								sb.WriteString(",")
+							}
+							sb.WriteString(tag.Title)
+						}
+						tags = sb.String()
+					}
+
+
+					var roles string
+					if roleList, err := svc.roleDao.QueryByUserID(ctx, list[index].ID); err != nil {
+						if err != nil && !errors.Is(err, sql.ErrNoRows){
+							return nil, err
+						}
+					} else {
+						var sb strings.Builder
+						for idx, role := range roleList {
+							if idx > 0 {
+								sb.WriteString(",")
+							}
+							sb.WriteString(role.Title)
+						}
+						roles = sb.String()
+					}
+
 					var values = make([]string, 0, 5+len(svc.fields))
 					values = append(values, list[index].Name)
 					values = append(values, list[index].Nickname)
 					values = append(values, department.Name)
+					values = append(values, tags)
+					values = append(values, roles)
+
 					for _, f := range svc.fields {
 						if s := list[index].GetStringWithDefault(f.ID, ""); s != "" {
 							values = append(values, s)
@@ -1031,6 +1069,36 @@ func (svc UserService) Import(ctx context.Context, request *http.Request) error 
 				record.Password = value
 				return nil
 			}))
+		columns = append(columns, importer.StrColumn([]string{"roles", "角色"}, false,
+			func(ctx context.Context, lineNumber int, origin, value string) error {
+				value = strings.TrimSpace(value)
+				if value == "" {
+					return nil
+				}
+				for _, s := range strings.Split(value, ",") {
+					s = strings.TrimSpace(s)
+					if s == "" {
+						continue
+					}
+					record.Roles = append(record.Roles, booclient.Role{Title: s})
+				}
+				return nil
+			}))
+		columns = append(columns, importer.StrColumn([]string{"tags", "标签"}, false,
+			func(ctx context.Context, lineNumber int, origin, value string) error {
+				value = strings.TrimSpace(value)
+				if value == "" {
+					return nil
+				}
+				for _, s := range strings.Split(value, ",") {
+					s = strings.TrimSpace(s)
+					if s == "" {
+						continue
+					}
+					record.Tags = append(record.Tags, booclient.TagData{Title: s})
+				}
+				return nil
+			}))
 
 		for _, f := range svc.fields {
 			func(f booclient.CustomField) {
@@ -1089,7 +1157,7 @@ func (svc UserService) Import(ctx context.Context, request *http.Request) error 
 						if !canResetPassword && password != "" && !isAllStar(password) {
 							err = errors.New("没有重置用户密码的权限，用户 '" + record.Name + "' 没有更新")
 						} else {
-							err = svc.update(ctx, currentUser, old.ID, record, old, booclient.UpdateModeSkip, actionImport)
+							err = svc.update(ctx, currentUser, old.ID, record, old, booclient.UpdateModeAdd, actionImport)
 							if err == nil {
 								if password != "" && !isAllStar(password) {
 									names := []string{record.Name, record.Nickname}

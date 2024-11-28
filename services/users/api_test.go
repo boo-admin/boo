@@ -75,7 +75,7 @@ func TestUserImport1(t *testing.T) {
 		return
 	}
 
-	list, err := users.List(ctx, 0, "", "", "", booclient.None, nil, "", 0, 0)
+	list, err := users.List(ctx, 0, "", "", "", booclient.None, []string{"tags"}, "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -92,6 +92,32 @@ func TestUserImport1(t *testing.T) {
 		t.Error(usernames)
 		t.Error(exceptedUsernames)
 	}
+
+	assetTag := func(t testing.TB, name string, tags []string) {
+		for idx := range list {
+			if list[idx].Name == name {
+				if len(tags) == 0 && len(list[idx].Tags) == 0 {
+					return
+				}
+
+				var actualtags []string
+				for _, tag := range list[idx].Tags {
+					actualtags = append(actualtags, tag.Title)
+				}
+				if !reflect.DeepEqual(actualtags, tags) {
+					t.Error(name, actualtags, tags)
+				}
+				return
+			}
+		}
+		t.Error("not found")
+	}
+
+	assetTag(t, "王源", []string{"测1","测2"})
+	assetTag(t, "周宏", []string{})
+	assetTag(t, "李琦", []string{"测2"})
+	assetTag(t, "杨尚", []string{})
+	assetTag(t, "王晶", []string{})
 
 	exceptedPhones := []string{"14228883500", "14228883600", "14228883400", "14228883700", "14228883800"}
 	if !reflect.DeepEqual(phones, exceptedPhones) {
@@ -127,7 +153,7 @@ func TestUserImport1(t *testing.T) {
 		return
 	}
 
-	list, err = users.List(ctx, 0, "", "", "", booclient.None, nil, "", 0, 0)
+	list, err = users.List(ctx, 0, "", "", "", booclient.None, []string{"tags"}, "", 0, 0)
 	if err != nil {
 		t.Error(err)
 		return
@@ -150,6 +176,12 @@ func TestUserImport1(t *testing.T) {
 		t.Error(phones)
 		t.Error(exceptedPhones)
 	}
+
+	assetTag(t, "王源", []string{"测1", "测2","标1"})
+	assetTag(t, "周宏", []string{})
+	assetTag(t, "李琦", []string{"测2", "标签2"})
+	assetTag(t, "杨尚", []string{})
+	assetTag(t, "王晶", []string{})
 }
 
 func TestEmployeeImport1(t *testing.T) {
@@ -217,6 +249,33 @@ func TestEmployeeImport1(t *testing.T) {
 		t.Error(err)
 		return
 	}
+
+
+	assetTag := func(t testing.TB, name string, tags []string) {
+		for idx := range list {
+			if list[idx].Name == name {
+				if len(tags) == 0 && len(list[idx].Tags) == 0 {
+					return
+				}
+
+				var actualtags []string
+				for _, tag := range list[idx].Tags {
+					actualtags = append(actualtags, tag.Title)
+				}
+				if !reflect.DeepEqual(actualtags, tags) {
+					t.Error(name, actualtags, tags)
+				}
+				return
+			}
+		}
+		t.Error("not found")
+	}
+
+	assetTag(t, "王源", []string{"测1","测2"})
+	assetTag(t, "周宏", []string{})
+	assetTag(t, "李琦", []string{"测2"})
+	assetTag(t, "杨尚", []string{})
+	assetTag(t, "王晶", []string{})
 
 	var usernames []string
 	var phones []string
@@ -287,4 +346,11 @@ func TestEmployeeImport1(t *testing.T) {
 		t.Error(phones)
 		t.Error(exceptedPhones)
 	}
+
+	
+	assetTag(t, "王源", []string{"测1", "测2","标1"})
+	assetTag(t, "周宏", []string{})
+	assetTag(t, "李琦", []string{"测2", "标签2"})
+	assetTag(t, "杨尚", []string{})
+	assetTag(t, "王晶", []string{})
 }

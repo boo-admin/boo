@@ -8,11 +8,12 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/boo-admin/boo/booclient"
 	"github.com/boo-admin/boo/errors"
-	"github.com/boo-admin/boo/goutils/tid"
 	"github.com/boo-admin/boo/goutils/importer"
+	"github.com/boo-admin/boo/goutils/tid"
 	"github.com/boo-admin/boo/services/authn"
 	"github.com/boo-admin/boo/validation"
 	gobatis "github.com/runner-mei/GoBatis"
@@ -77,7 +78,7 @@ func NewEmployees(env *booclient.Environment,
 		logger:          env.Logger.WithGroup("employees"),
 		operationLogger: operationLogger,
 		db:              db,
-		departmentDao:     NewDepartmentDaoWith(sess),
+		departmentDao:   NewDepartmentDaoWith(sess),
 		employeeDao:     NewEmployeeDaoWith(sess),
 		employeeTagDao:  NewEmployeeTagDaoWith(sess),
 		employee2TagDao: NewEmployee2TagDaoWith(sess),
@@ -93,7 +94,7 @@ type employeeService struct {
 	db              *gobatis.SessionFactory
 
 	enablePasswordCheck bool
-	departmentDao         DepartmentDao
+	departmentDao       DepartmentDao
 	employeeDao         EmployeeDao
 	employeeTagDao      EmployeeTagDao
 	employee2TagDao     Employee2TagDao
@@ -145,7 +146,7 @@ func (svc employeeService) insert(ctx context.Context, currentUser authn.AuthUse
 		}
 
 		var contents []ChangeRecord
-		if importEmployee == actionNormal {
+		if importEmployee == actionNormal || importEmployee == actionImport {
 			if contents, err = svc.updateTags(ctx, id, employee, false); err != nil {
 				return err
 			}
@@ -490,7 +491,7 @@ func (svc employeeService) FindByName(ctx context.Context, name string, includes
 	if err != nil {
 		return nil, errors.Wrap(err, "查询员工失败")
 	}
-	
+
 	includes = splitIncludes(includes, GetEmployeeAllIncludes())
 	return svc.loadEmployee(ctx, employee, includes)
 }
@@ -766,6 +767,7 @@ func (svc employeeService) Export(ctx context.Context, format string, inline boo
 				"员工名",
 				"中文名",
 				"部门",
+				"标签",
 			}
 			for _, f := range svc.fields {
 				titles = append(titles, f.Name)
@@ -804,11 +806,28 @@ func (svc employeeService) Export(ctx context.Context, format string, inline boo
 						departmentCache[list[index].DepartmentID] = d
 						department = d
 					}
+					var tags string
+					if tagList, err := svc.employeeTagDao.QueryByEmployeeID(ctx, list[index].ID); err != nil {
+						if err != nil && !errors.Is(err, sql.ErrNoRows) {
+							return nil, err
+						}
+					} else {
+						var sb strings.Builder
+						for idx, tag := range tagList {
+							if idx > 0 {
+								sb.WriteString(",")
+							}
+							sb.WriteString(tag.Title)
+						}
+						tags = sb.String()
+					}
 
 					var values = make([]string, 0, 5+len(svc.fields))
 					values = append(values, list[index].Name)
 					values = append(values, list[index].Nickname)
 					values = append(values, department.Name)
+					values = append(values, tags)
+
 					for _, f := range svc.fields {
 						values = append(values, list[index].GetString(f.ID))
 					}
@@ -872,6 +891,21 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 				record.Nickname = value
 				return nil
 			}))
+		columns = append(columns, importer.StrColumn([]string{"tags", "标签"}, false,
+			func(ctx context.Context, lineNumber int, origin, value string) error {
+				value = strings.TrimSpace(value)
+				if value == "" {
+					return nil
+				}
+				for _, s := range strings.Split(value, ",") {
+					s = strings.TrimSpace(s)
+					if s == "" {
+						continue
+					}
+					record.Tags = append(record.Tags, booclient.TagData{Title: s})
+				}
+				return nil
+			}))
 
 		for _, f := range svc.fields {
 			func(f booclient.CustomField) {
@@ -924,7 +958,7 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 					if override {
 						err = errors.New("员工 '" + record.Name + "' 已存在")
 					} else if canUpdate {
-						err = svc.update(ctx, currentUser, old.ID, record, old, booclient.UpdateModeSkip, actionImport)
+						err = svc.update(ctx, currentUser, old.ID, record, old, booclient.UpdateModeAdd, actionImport)
 					} else {
 						err = errors.New("没有更新员工的权限，员工 '" + record.Name + "' 没有更新")
 					}
@@ -1193,7 +1227,7 @@ func NewEmployeeTags(env *booclient.Environment,
 		operationLogger: operationLogger,
 		db:              db,
 		employeeTagDao:  NewEmployeeTagDaoWith(sess),
-		employee2TagDao:  NewEmployee2TagDaoWith(sess),
+		employee2TagDao: NewEmployee2TagDaoWith(sess),
 	}, nil
 }
 
@@ -1203,22 +1237,22 @@ type employeeTagService struct {
 	operationLogger OperationLogger
 	db              *gobatis.SessionFactory
 
-	employeeTagDao      EmployeeTagDao
-	employee2TagDao     Employee2TagDao
+	employeeTagDao  EmployeeTagDao
+	employee2TagDao Employee2TagDao
 }
 
 func (svc *employeeTagService) fromTag(tag *EmployeeTag) *booclient.TagData {
 	return &booclient.TagData{
-		ID: tag.ID,
-		UUID: tag.UUID,
+		ID:    tag.ID,
+		UUID:  tag.UUID,
 		Title: tag.Title,
 	}
 }
 
 func (svc *employeeTagService) toTag(tag *booclient.TagData) *EmployeeTag {
 	return &EmployeeTag{
-		ID: tag.ID,
-		UUID: tag.UUID,
+		ID:    tag.ID,
+		UUID:  tag.UUID,
 		Title: tag.Title,
 	}
 }
