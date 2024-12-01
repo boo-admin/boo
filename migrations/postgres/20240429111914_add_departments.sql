@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS boo_departments (
   uuid                        VARCHAR(50),
   name                        VARCHAR(50),
   order_num                   int,
+  fields                      jsonb,
   created_at                  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at                  TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   unique(name)

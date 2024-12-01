@@ -120,6 +120,7 @@ func TestUser1(t *testing.T) {
  	data.Department = &booclient.Department{
                        UUID:      "abc",
                        Name:      "abc",
+                       Fields:    map[string]interface{}{},
                }
 
   for idx := range data.Tags {

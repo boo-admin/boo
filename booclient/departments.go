@@ -17,6 +17,7 @@ type Department struct {
 	UUID      string    `json:"uuid" xorm:"uuid unique null"`
 	Name      string    `json:"name" xorm:"name notnull"`
 	OrderNum  int       `json:"order_num" xorm:"order_num null"`
+	Fields    map[string]interface{}    `json:"fields" xorm:"fields null"`
 	CreatedAt time.Time `json:"created_at,omitempty" xorm:"created_at created"`
 	UpdatedAt time.Time `json:"updated_at,omitempty" xorm:"updated_at updated"`
 
