@@ -28,13 +28,16 @@ type Users interface {
 
 type UsersForHTTP interface {
 	// @Summary 下载一个用户列表
-	// @Param   format            path  string                     false     "下载文件要格式" enums(csv,xlsx)
-	// @Param   inline            query bool                       false     "是否作为 body 返回"
+	// @Param   format             path  string                     false     "下载文件要格式" enums(csv,xlsx)
+	// @Param   inline             query bool                       false     "是否作为 body 返回"
+	// @Param   sort               query string                       false        "排序字段"
+	// @Param   offset             query int                          false        "offset"
+	// @Param   limit              query int                          false        "limit"
 	// @Accept  json
 	// @Produce json
 	// @Router  /users/export/{format} [get]
 	// @x-gogen-noreturn true
-	Export(ctx context.Context, format string, inline bool, writer http.ResponseWriter) error
+	Export(ctx context.Context, format string, inline bool, sort string, offset, limit int64, writer http.ResponseWriter) error
 
 	// @Summary 上传一份用户列表，并创建（或更新）用户信息
 	// @Accept  json
@@ -50,13 +53,16 @@ type Employees interface {
 
 type EmployeesForHTTP interface {
 	// @Summary 下载一个员工列表
-	// @Param   format            path  string                     false     "下载文件要格式" enums(csv,xlsx)
-	// @Param   inline            query bool                       false     "是否作为 body 返回"
+	// @Param   format             path  string                     false     "下载文件要格式" enums(csv,xlsx)
+	// @Param   inline             query bool                       false     "是否作为 body 返回"
+	// @Param   sort               query string                       false        "排序字段"
+	// @Param   offset             query int                          false        "offset"
+	// @Param   limit              query int                          false        "limit"
 	// @Accept  json
 	// @Produce json
 	// @Router  /employees/export/{format} [get]
 	// @x-gogen-noreturn true
-	Export(ctx context.Context, format string, inline bool, writer http.ResponseWriter) error
+	Export(ctx context.Context, format string, inline bool, sort string, offset, limit int64, writer http.ResponseWriter) error
 
 	// @Summary 上传一份员工列表，并创建（或更新）员工信息
 	// @Accept  json

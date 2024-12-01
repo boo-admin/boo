@@ -890,7 +890,7 @@ func (svc UserService) List(ctx context.Context, departmentID int64, role, tag, 
 	}
 	return list, nil
 }
-func (svc UserService) Export(ctx context.Context, format string, inline bool, writer http.ResponseWriter) error {
+func (svc UserService) Export(ctx context.Context, format string, inline bool, sort string, offset, limit int64, writer http.ResponseWriter) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -903,7 +903,7 @@ func (svc UserService) Export(ctx context.Context, format string, inline bool, w
 
 	return importer.WriteHTTP(ctx, "users", format, inline, writer,
 		importer.RecorderFunc(func(ctx context.Context) (importer.RecordIterator, []string, error) {
-			list, err := svc.userDao.List(ctx, 0, 0, "", 0, "", "", sql.NullBool{Valid: true}, "", 0, 0)
+			list, err := svc.userDao.List(ctx, 0, 0, "", 0, "", "", sql.NullBool{Valid: true}, sort, offset, limit)
 			if err != nil {
 				return nil, nil, err
 			}

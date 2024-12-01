@@ -746,7 +746,7 @@ func (svc employeeService) GetUserEmployeeDiff(ctx context.Context) ([]booclient
 	return svc.employeeDao.GetUserEmployeeDiff(ctx)
 }
 
-func (svc employeeService) Export(ctx context.Context, format string, inline bool, writer http.ResponseWriter) error {
+func (svc employeeService) Export(ctx context.Context, format string, inline bool, sort string, offset, limit int64, writer http.ResponseWriter) error {
 	currentUser, err := authn.ReadUserFromContext(ctx)
 	if err != nil {
 		return err
@@ -759,7 +759,7 @@ func (svc employeeService) Export(ctx context.Context, format string, inline boo
 
 	return importer.WriteHTTP(ctx, "employeeDao", format, inline, writer,
 		importer.RecorderFunc(func(ctx context.Context) (importer.RecordIterator, []string, error) {
-			list, err := svc.employeeDao.List(ctx, 0, 0, "", "", sql.NullBool{Valid: true}, "", 0, 0)
+			list, err := svc.employeeDao.List(ctx, 0, 0, "", "", sql.NullBool{Valid: true}, sort, offset, limit)
 			if err != nil {
 				return nil, nil, err
 			}

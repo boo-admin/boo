@@ -302,9 +302,9 @@ type Users interface {
 	// @Param   keyword            query string                       false        "搜索关键字"
 	// @Param   deleted            query sql.NullBool                 false        "指定是否包含删除的用户"
 	// @Param   include            query []string                     false        "指定返回的内容"
+	// @Param   sort               query string                       false        "排序字段"
 	// @Param   offset             query int                          false        "offset"
 	// @Param   limit              query int                          false        "limit"
-	// @Param   sort               query string                       false        "排序字段"
 	// @Accept  json
 	// @Produce json
 	// @Router  /users [get]
