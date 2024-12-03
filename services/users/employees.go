@@ -798,7 +798,7 @@ func (svc employeeService) Export(ctx context.Context, format string, inline boo
 				},
 				ReadFunc: func(ctx context.Context) ([]string, error) {
 					department := departmentCache[list[index].DepartmentID]
-					if department == nil {
+					if department == nil && list[index].DepartmentID > 0 {
 						d, err := svc.departmentDao.FindByID(ctx, list[index].DepartmentID)
 						if err != nil {
 							return nil, err
@@ -825,7 +825,11 @@ func (svc employeeService) Export(ctx context.Context, format string, inline boo
 					var values = make([]string, 0, 5+len(svc.fields))
 					values = append(values, list[index].Name)
 					values = append(values, list[index].Nickname)
-					values = append(values, department.Name)
+					if department != nil {
+						values = append(values, department.Name)
+					} else {
+						values = append(values, "")
+					}
 					values = append(values, tags)
 
 					for _, f := range svc.fields {

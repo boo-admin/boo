@@ -988,7 +988,11 @@ func (svc UserService) Export(ctx context.Context, format string, inline bool, s
 					var values = make([]string, 0, 5+len(svc.fields))
 					values = append(values, list[index].Name)
 					values = append(values, list[index].Nickname)
-					values = append(values, department.Name)
+					if department != nil {
+						values = append(values, department.Name)
+					} else {
+						values = append(values, "")
+					}
 					values = append(values, tags)
 					values = append(values, roles)
 
