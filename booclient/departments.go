@@ -24,6 +24,18 @@ type Department struct {
 	Children []*Department `json:"children" xorm:"-"`
 }
 
+func (u *Department) GetString(key string) string {
+	if u.Fields == nil {
+		return ""
+	}
+	o := u.Fields[key]
+	if o == nil {
+		return ""
+	}
+	s, _ := o.(string)
+	return s
+}
+
 type Departments interface {
 	// @Summary 新建一个部门
 	// @Param department     body Department    true     "部门定义"
