@@ -21,6 +21,10 @@ type TimeRange struct {
 	End   time.Time `json:"end,omitempty"`
 }
 
+func (tr TimeRange) IsZero() bool {
+	return tr.Start.IsZero() && tr.End.IsZero()
+}
+
 func BoolToString(value bool) string {
 	if value {
 		return "true"
