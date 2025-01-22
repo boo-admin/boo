@@ -25,6 +25,11 @@ type Server struct {
 	EmployeeTags     booclient.EmployeeTags
 }
 
+func SetAutoMigrations(env *booclient.Environment, value bool) *booclient.Environment {
+	env.Config.Set("auto_migrations", value)
+	return env
+}
+
 func NewServer(env *booclient.Environment) (*Server, error) {
 	srv := &Server{
 		Env: env,
@@ -35,9 +40,11 @@ func NewServer(env *booclient.Environment) (*Server, error) {
 	}
 	srv.Factory = dbFactory
 
-	err = RunMigrations(context.Background(), dbFactory.DriverName(), dbFactory.DB().(*sql.DB), env.Config.BoolWithDefault("db.reset_db", false))
-	if err != nil {
-		return nil, err
+	if env.Config.BoolWithDefault("auto_migrations", true) {
+		err = RunMigrations(context.Background(), dbFactory.DriverName(), dbFactory.DB().(*sql.DB), env.Config.BoolWithDefault("db.reset_db", false))
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	session := dbFactory.SessionReference()
