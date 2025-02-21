@@ -13,17 +13,36 @@ var (
 		ID:   "email",
 		Name: "邮箱",
 	}
-	Phone = CustomField{
-		ID:    "phone",
-		Name:  "电话",
-		Alias: []string{"手机"},
+	Mobile = CustomField{
+		ID:    "mobilephone",
+		Name:  "手机",
+		Alias: []string{"移动电话", "电话", "手机号", "手机号码"},
+	}
+	Telephone = CustomField{
+		ID:    "telephone",
+		Name:  "座机",
+		Alias: []string{"固定电话", "座机号"},
+	}
+	IsSupporter = CustomField{
+		ID:   "is_supporter",
+		Name: "是否为支持人员",
 	}
 
-	DefaultFields = []CustomField{
+	DefaultUserFields = []CustomField{
 		WhiteAddressList,
 		WelcomeURL,
-		Phone,
+		Mobile,
+		Telephone,
 		Email,
+	}
+
+	DefaultEmployeeFields = []CustomField{
+		// WhiteAddressList,
+		// WelcomeURL,
+		Mobile,
+		Telephone,
+		Email,
+		IsSupporter,
 	}
 )
 

@@ -42,7 +42,7 @@ go install github.com/swaggo/swag/cmd/swag@latest
 
 set GOGEN_PLUGIN=echo
 set GOGEN_ERRORS=github.com/boo-admin/boo/errors
-set GOGEN_IMPORTS=github.com/boo-admin/boo,github.com/boo-admin/boo/booclient,github.com/boo-admin/boo/engine/echofunctions
+set GOGEN_IMPORTS=github.com/boo-admin/boo/engine/echofunctions
 set GOGEN_HTTPCODEWITH=errors.HttpCodeWith
 set GOGEN_TOJSONERROR=errors.ToEncodeError
 set GOGEN_BADARGUMENT=errors.NewBadArgument

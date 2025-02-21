@@ -11,15 +11,15 @@ import (
 )
 
 type Department struct {
-	TableName struct{}  `json:"-" xorm:"boo_departments"`
-	ID        int64     `json:"id" xorm:"id pk autoincr"`
-	ParentID  int64     `json:"parent_id" xorm:"parent_id null"`
-	UUID      string    `json:"uuid" xorm:"uuid unique null"`
-	Name      string    `json:"name" xorm:"name notnull"`
-	OrderNum  int       `json:"order_num" xorm:"order_num null"`
-	Fields    map[string]interface{}    `json:"fields" xorm:"fields null"`
-	CreatedAt time.Time `json:"created_at,omitempty" xorm:"created_at created"`
-	UpdatedAt time.Time `json:"updated_at,omitempty" xorm:"updated_at updated"`
+	TableName struct{}               `json:"-" xorm:"boo_departments"`
+	ID        int64                  `json:"id" xorm:"id pk autoincr"`
+	ParentID  int64                  `json:"parent_id" xorm:"parent_id null"`
+	UUID      string                 `json:"uuid" xorm:"uuid unique null"`
+	Name      string                 `json:"name" xorm:"name notnull"`
+	OrderNum  int                    `json:"order_num" xorm:"order_num null"`
+	Fields    map[string]interface{} `json:"fields" xorm:"fields null"`
+	CreatedAt time.Time              `json:"created_at,omitempty" xorm:"created_at created"`
+	UpdatedAt time.Time              `json:"updated_at,omitempty" xorm:"updated_at updated"`
 
 	Children []*Department `json:"children" xorm:"-"`
 }

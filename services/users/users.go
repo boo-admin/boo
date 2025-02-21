@@ -93,10 +93,10 @@ func NewUsers(env *booclient.Environment,
 		}
 
 		if fields == nil {
-			fields = booclient.DefaultFields
+			fields = booclient.DefaultUserFields
 		}
 	} else {
-		fields = booclient.DefaultFields
+		fields = booclient.DefaultUserFields
 	}
 
 	var defaultUsernames = env.Config.StringsWithDefault("users.default_names", nil)

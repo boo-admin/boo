@@ -7,11 +7,11 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"time"
-	"fmt"
 
 	"github.com/boo-admin/boo/errors"
 	"github.com/boo-admin/boo/goutils/as"
@@ -54,7 +54,7 @@ func ParseUpdateMode(s string) (UpdateMode, error) {
 	case "skip":
 		return UpdateModeSkip, nil
 	}
-	return UpdateModeOverride, errors.New("parse update mode fail - '"+s+"'")
+	return UpdateModeOverride, errors.New("parse update mode fail - '" + s + "'")
 }
 
 type TagData struct {
@@ -140,7 +140,11 @@ type User struct {
 }
 
 func (u *User) GetPhone() string {
-	return u.getString(Phone.ID)
+	s := u.getString(Mobile.ID)
+	if s != "" {
+		return s
+	}
+	return u.getString(Telephone.ID)
 }
 
 func (u *User) GetEmail() string {

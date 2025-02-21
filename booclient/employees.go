@@ -8,6 +8,7 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/boo-admin/boo/goutils/as"
 	"github.com/runner-mei/resty"
 )
 
@@ -69,14 +70,18 @@ func (u *Employee) From(user *User) {
 }
 
 func (u *Employee) GetPhone() string {
-	return u.GetString(Phone.ID)
+	s := u.getString(Mobile.ID)
+	if s != "" {
+		return s
+	}
+	return u.getString(Telephone.ID)
 }
 
 func (u *Employee) GetEmail() string {
-	return u.GetString(Email.ID)
+	return u.getString(Email.ID)
 }
 
-func (u *Employee) GetString(key string) string {
+func (u *Employee) getString(key string) string {
 	if u.Fields == nil {
 		return ""
 	}
@@ -86,6 +91,28 @@ func (u *Employee) GetString(key string) string {
 	}
 	s, _ := o.(string)
 	return s
+}
+
+func (u *Employee) GetStringWithDefault(key, defaultValue string) string {
+	if u.Fields == nil {
+		return defaultValue
+	}
+	o := u.Fields[key]
+	if o == nil {
+		return defaultValue
+	}
+	return as.StringWithDefault(o, defaultValue)
+}
+
+func (u *Employee) GetBoolWithDefault(key string, defaultValue bool) bool {
+	if u.Fields == nil {
+		return defaultValue
+	}
+	o := u.Fields[key]
+	if o == nil {
+		return defaultValue
+	}
+	return as.BoolWithDefault(o, defaultValue)
 }
 
 type UserEmployeeDiff struct {

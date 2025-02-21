@@ -440,8 +440,8 @@ func init() {
 		if ctx.Config.Constants == nil {
 			ctx.Config.Constants = map[string]interface{}{}
 		}
-		if _, ok := ctx.Config.Constants["user_phone"]; !ok {
-			ctx.Config.Constants["user_phone"] = booclient.Phone.ID
+		if _, ok := ctx.Config.Constants["user_mobile"]; !ok {
+			ctx.Config.Constants["user_mobile"] = booclient.Mobile.ID
 		}
 		if _, ok := ctx.Config.Constants["user_email"]; !ok {
 			ctx.Config.Constants["user_email"] = booclient.Email.ID

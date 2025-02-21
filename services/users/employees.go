@@ -66,10 +66,10 @@ func NewEmployees(env *booclient.Environment,
 		}
 
 		if fields == nil {
-			fields = booclient.DefaultFields
+			fields = booclient.DefaultEmployeeFields
 		}
 	} else {
-		fields = booclient.DefaultFields
+		fields = booclient.DefaultEmployeeFields
 	}
 
 	sess := db.SessionReference()
@@ -833,7 +833,7 @@ func (svc employeeService) Export(ctx context.Context, format string, inline boo
 					values = append(values, tags)
 
 					for _, f := range svc.fields {
-						values = append(values, list[index].GetString(f.ID))
+						values = append(values, list[index].GetStringWithDefault(f.ID, ""))
 					}
 					values = append(values,
 						formatTime(list[index].CreatedAt),

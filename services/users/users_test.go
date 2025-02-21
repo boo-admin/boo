@@ -63,7 +63,7 @@ func TestUser1(t *testing.T) {
 		// Source: "default",
 		Disabled: false,
 		Fields: map[string]interface{}{
-			booclient.Phone.ID: "1334567",
+			booclient.Mobile.ID: "1334567",
 			booclient.Email.ID: "a@b.com",
 		},
 
@@ -167,7 +167,7 @@ func TestUser1(t *testing.T) {
 	}
 
 	data.Fields = map[string]interface{}{
-		booclient.Phone.ID: "1334567",
+		booclient.Mobile.ID: "1334567",
 		booclient.Email.ID: "c@b.com",
 	}
 	if !cmp.Equal(data, actual, opts...) {

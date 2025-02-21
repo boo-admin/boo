@@ -525,17 +525,17 @@ func Bool(value interface{}) (bool, error) {
 	}
 	if s, ok := value.(string); ok {
 		switch s {
-		case "TRUE", "True", "true", "YES", "Yes", "yes", "on", "enabled":
+		case "TRUE", "True", "true", "YES", "Yes", "yes", "on", "enabled", "是":
 			return true, nil
-		case "FALSE", "False", "false", "NO", "No", "no", "off":
+		case "FALSE", "False", "false", "NO", "No", "no", "off", "否", "不是":
 			return false, nil
 		}
 	}
 	if s, ok := value.(fmt.Stringer); ok {
 		switch s.String() {
-		case "TRUE", "True", "true", "YES", "Yes", "yes", "on", "enabled":
+		case "TRUE", "True", "true", "YES", "Yes", "yes", "on", "enabled", "是":
 			return true, nil
-		case "FALSE", "False", "false", "NO", "No", "no", "off":
+		case "FALSE", "False", "false", "NO", "No", "no", "off", "否", "不是":
 			return false, nil
 		}
 	}
@@ -552,17 +552,17 @@ func BoolWithDefaultValue(value interface{}, defaultValue bool) bool {
 	}
 	if s, ok := value.(string); ok {
 		switch s {
-		case "TRUE", "True", "true", "YES", "Yes", "yes", "on", "enabled":
+		case "TRUE", "True", "true", "YES", "Yes", "yes", "on", "enabled", "是":
 			return true
-		case "FALSE", "False", "false", "NO", "No", "no", "off":
+		case "FALSE", "False", "false", "NO", "No", "no", "off", "否", "不是":
 			return false
 		}
 	}
 	if s, ok := value.(fmt.Stringer); ok {
 		switch s.String() {
-		case "TRUE", "True", "true", "YES", "Yes", "yes", "on", "enabled":
+		case "TRUE", "True", "true", "YES", "Yes", "yes", "on", "enabled", "是":
 			return true
-		case "FALSE", "False", "false", "NO", "No", "no", "off":
+		case "FALSE", "False", "false", "NO", "No", "no", "off", "否", "不是":
 			return false
 		}
 	}
