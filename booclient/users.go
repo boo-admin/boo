@@ -201,6 +201,14 @@ func (u *User) getString(key string) string {
 	return s
 }
 
+func (u *User) Get(key string) interface{} {
+	if u.Fields == nil {
+		return nil
+	}
+	o := u.Fields[key]
+	return o
+}
+
 func (u *User) GetStringWithDefault(key, defaultValue string) string {
 	if u.Fields == nil {
 		return defaultValue

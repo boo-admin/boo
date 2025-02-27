@@ -93,6 +93,14 @@ func (u *Employee) getString(key string) string {
 	return s
 }
 
+func (u *Employee) Get(key string) interface{} {
+	if u.Fields == nil {
+		return nil
+	}
+	o := u.Fields[key]
+	return o
+}
+
 func (u *Employee) GetStringWithDefault(key, defaultValue string) string {
 	if u.Fields == nil {
 		return defaultValue

@@ -839,7 +839,11 @@ func (svc employeeService) Export(ctx context.Context, format string, inline boo
 					values = append(values, tags)
 
 					for _, f := range svc.fields {
-						values = append(values, list[index].GetStringWithDefault(f.ID, ""))
+						if len(f.Values) == 0 {
+							values = append(values, list[index].GetStringWithDefault(f.ID, ""))
+						} else {
+							values = append(values, booclient.EnumerationValueToString(f.Values, list[index].Get(f.ID)))
+						}
 					}
 					values = append(values,
 						formatTime(list[index].CreatedAt),
@@ -916,7 +920,11 @@ func (svc employeeService) Import(ctx context.Context, request *http.Request) er
 						if record.Fields == nil {
 							record.Fields = map[string]interface{}{}
 						}
-						record.Fields[f.ID] = value
+						v, err := booclient.ParseCustomFieldValue(f, value)
+						if err != nil {
+							return errors.Wrap(err, origin+" '"+value+"' 转换失败，不可识别的值")
+						}
+						record.Fields[f.ID] = v
 						return nil
 					}))
 			}(f)
