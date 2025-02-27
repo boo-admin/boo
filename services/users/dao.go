@@ -95,8 +95,22 @@ type UserDao interface {
 	//   OR nickname like <like value="keyword" />
 	//   OR fields->>'$.<print value="constants.user_phone" />' like <like value="keyword" />
 	//   OR fields->>'$.<print value="constants.user_email" />' like <like value="keyword" /></if>
+	//   <if test="isNotEmpty(fields)"><foreach collection="fields">
+	//     <chose>
+	//			<when test="isBool(item)">
+	//            <if test="item">
+	//            AND fields->>'$.<print value="index" />' = 'true'
+	//            <else/>
+	//            AND (fields->>'$.<print value="index" />' = 'false' OR fields->>'$.<print value="index" />' = 'false')
+	//            </if>
+	//          </when>
+	//			<otherwise>
+	//            AND fields->>'$.<print value="index" />' = #{item}
+	//			</otherwise>
+	//     </chose>
+	//   </foreach></if>
 	//   </where>
-	Count(ctx context.Context, departmentID int64, roleID int64, role string, tagID int64, tag, keyword string, deleted sql.NullBool) (int64, error)
+	Count(ctx context.Context, departmentID int64, roleID int64, role string, tagID int64, tag, keyword string, fields map[string]interface{}, deleted sql.NullBool) (int64, error)
 	// @default SELECT * from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
 	//   <if test="roleID &gt; 0" >id in (select user_id from <tablename type="User2Role" as="u2r" /> where u2r.role_id =#{roleID})) AND </if>

@@ -520,6 +520,12 @@ func (svc employeeService) loadEmployee(ctx context.Context, employee *Employee,
 	return employee, nil
 }
 func (svc employeeService) Count(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool) (int64, error) {
+	switch tag {
+	case "__nonsupporter":
+		tag = ""
+	case "__supporter":
+		tag = ""
+	}
 	return svc.employeeDao.Count(ctx, departmentID, 0, tag, keyword, deleted)
 }
 func (svc employeeService) List(ctx context.Context, departmentID int64, tag, keyword string, deleted sql.NullBool, includes []string, sort string, offset, limit int64) ([]Employee, error) {

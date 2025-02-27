@@ -21,7 +21,7 @@ var (
 	Telephone = CustomField{
 		ID:    "telephone",
 		Name:  "座机",
-		Alias: []string{"固定电话", "座机号"},
+		Alias: []string{"固定电话", "座机号", "座机号码"},
 	}
 	IsSupporter = CustomField{
 		ID:   "is_supporter",
