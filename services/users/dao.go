@@ -303,6 +303,16 @@ type User2RoleDao interface {
 	QueryByUserID(ctx context.Context, userID int64) ([]User2Role, error)
 }
 
+func init() {
+	gobatis.Constants["user_class_normal"] = "__class_normal"
+	gobatis.Constants["user_class_support"] = "__class_support"
+	gobatis.Constants["user_class_nonsupport"] = "__class_nonsupport"
+	gobatis.Constants["employee_class"] = booclient.EmployeeClass.ID
+	gobatis.Constants["user_phone"] = booclient.Mobile.ID
+	gobatis.Constants["user_email"] = booclient.Email.ID
+}
+
+
 // @gobatis.namespace boo
 type EmployeeDao interface {
 	// @type select
@@ -329,7 +339,14 @@ type EmployeeDao interface {
 	// @default SELECT count(*) from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
 	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id =#{tagID})) AND </if>
-	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id in (select id from <tablename type="Employee2Tag" as="tag" /> where uuid=#{tag})) AND </if>
+	//   <if test="isNotEmpty(tag)" >
+	//     <chose>
+	//      <when test="tag == constants.user_class_normal">( NOT (fields ? '<print value="constants.employee_class" />') OR fields->>'<print value="constants.employee_class" />' = '0') AND </when>
+	//      <when test="tag == constants.user_class_support">fields->>'<print value="constants.employee_class" />' = '1' AND </when>
+	//      <when test="tag == constants.user_class_nonsupport">fields->>'<print value="constants.employee_class" />' = '2' AND </when>
+	//      <otherwise>id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id in (select id from <tablename type="EmployeeTag" as="tag" /> where uuid=#{tag})) AND </otherwise>
+	//     </chose>
+	//   </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
@@ -340,7 +357,14 @@ type EmployeeDao interface {
 	// @mysql SELECT count(*) from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
 	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id =#{tagID})) AND </if>
-	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id in (select id from <tablename type="Employee2Tag" as="tag" /> where uuid=#{tag})) AND </if>
+	//   <if test="isNotEmpty(tag)" >
+	//     <chose>
+	//      <when test="tag == constants.user_class_normal">( NOT (fields ? '<print value="constants.employee_class" />') OR fields->>'<print value="constants.employee_class" />' = '0') AND </when>
+	//      <when test="tag == constants.user_class_support">fields->>'<print value="constants.employee_class" />' = '1' AND </when>
+	//      <when test="tag == constants.user_class_nonsupport">fields->>'<print value="constants.employee_class" />' = '2' AND </when>
+	//      <otherwise>id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id in (select id from <tablename type="EmployeeTag" as="tag" /> where uuid=#{tag})) AND </otherwise>
+	//     </chose>
+	//   </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
@@ -353,7 +377,14 @@ type EmployeeDao interface {
 	// @default SELECT * from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
 	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id =#{tagID})) AND </if>
-	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id in (select id from <tablename type="Employee2Tag" as="tag" /> where uuid=#{tag})) AND </if>
+	//   <if test="isNotEmpty(tag)" >
+	//     <chose>
+	//      <when test="tag == constants.user_class_normal">( NOT (fields ? '<print value="constants.employee_class" />') OR fields->>'<print value="constants.employee_class" />' = '0') AND </when>
+	//      <when test="tag == constants.user_class_support">fields->>'<print value="constants.employee_class" />' = '1' AND </when>
+	//      <when test="tag == constants.user_class_nonsupport">fields->>'<print value="constants.employee_class" />' = '2' AND </when>
+	//      <otherwise>id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id in (select id from <tablename type="EmployeeTag" as="tag" /> where uuid=#{tag})) AND </otherwise>
+	//     </chose>
+	//   </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />
@@ -366,7 +397,14 @@ type EmployeeDao interface {
 	// @mysql SELECT * from <tablename /> <where>
 	//   <if test="departmentID &gt; 0" >department_id = #{departmentID} AND </if>
 	//   <if test="tagID &gt; 0" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id =#{tagID})) AND </if>
-	//   <if test="isNotEmpty(tag)" >id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id in (select id from <tablename type="Employee2Tag" as="tag" /> where uuid=#{tag})) AND </if>
+	//   <if test="isNotEmpty(tag)" >
+	//     <chose>
+	//      <when test="tag == constants.user_class_normal">( NOT (fields ? '<print value="constants.employee_class" />') OR fields->>'<print value="constants.employee_class" />' = '0') AND </when>
+	//      <when test="tag == constants.user_class_support">fields->>'<print value="constants.employee_class" />' = '1' AND </when>
+	//      <when test="tag == constants.user_class_nonsupport">fields->>'<print value="constants.employee_class" />' = '2' AND </when>
+	//      <otherwise>id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id in (select id from <tablename type="EmployeeTag" as="tag" /> where uuid=#{tag})) AND </otherwise>
+	//     </chose>
+	//   </if>
 	//   <if test="deleted.Valid"><if test="deleted.Bool">deleted_at IS NOT NULL AND<else/>deleted_at IS NULL AND</if></if>
 	//   <if test="isNotEmpty(keyword)">
 	//   name like <like value="keyword" />

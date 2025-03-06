@@ -1,8 +1,6 @@
 module github.com/boo-admin/boo
 
-go 1.22.0
-
-toolchain go1.22.6
+go 1.20
 
 require (
 	gitee.com/Trisia/gotlcp v1.3.21

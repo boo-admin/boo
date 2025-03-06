@@ -32,8 +32,8 @@ var (
 		Name:  "座机",
 		Alias: []string{"固定电话", "座机号", "座机号码"},
 	}
-	IsSupporter = CustomField{
-		ID:   "is_supporter",
+	EmployeeClass = CustomField{
+		ID:   "employee_class",
 		Name: "是否为支持人员",
 
 		Type: "int",
@@ -67,7 +67,7 @@ var (
 		Mobile,
 		Telephone,
 		Email,
-		IsSupporter,
+		EmployeeClass,
 	}
 )
 
@@ -112,6 +112,16 @@ func EnumerationValueToString(values []EnumerationValue, value interface{}) stri
 	return svalue
 }
 
+func CustomFieldValueToString(f CustomField, value interface{}) string {
+	if value == nil {
+		if f.DefaultValue != "" {
+			return f.DefaultValue
+		}
+	}
+
+	return EnumerationValueToString(f.Values, value)
+}
+
 func ParseEnumerationValue(values []EnumerationValue, value string) (interface{}, error) {
 	for _, v := range values {
 		if value == v.Label {
@@ -139,3 +149,10 @@ func ParseCustomFieldValue(f CustomField, value string) (interface{}, error) {
 
 	return value, nil
 }
+
+
+	//      <when test="tag == constants.user_class_normal">( NOT (fields ? '<print value="constants.employee_class" />') OR fields->>'<print value="constants.employee_class" />' = '0') AND</when>
+	//      <when test="tag == constants.user_class_support">fields->>'<print value="constants.employee_class" />' = '1' AND</when>
+	//      <when test="tag == constants.user_class_nonsupport">fields->>'<print value="constants.employee_class" />' = '2' AND</when>
+	//      <otherwise>id in (select user_id from <tablename type="Employee2Tag" as="e2t" /> where e2t.tag_id in (select id from <tablename type="EmployeeTag" as="tag" /> where uuid=#{tag})) AND</otherwise>
+	//     </chose>
